@@ -1,0 +1,98 @@
+[
+  {
+    "key": "prototipos-digitais",
+    "name": "Oficina de protótipos digitais",
+    "theme": "Tecnologia e inovação",
+    "description": "Oficina voltada à criação de protótipos de aplicativos, desde a identificação das necessidades do público até a organização das telas e dos fluxos de navegação. Estudantes de Engenharia de Software do 1º, 3º e 5º semestres trabalharão em equipes para desenvolver uma proposta, testar sua compreensão com os colegas e apresentar as decisões de interface adotadas.",
+    "audience": "Estudantes de Engenharia de Software do 1º, 3º e 5º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de desenvolvimento de software",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A integração entre estudantes de diferentes etapas do curso favorece a troca de experiências sobre requisitos, usabilidade e comunicação de soluções digitais.",
+    "objective": "Construir e apresentar um protótipo de aplicativo com fluxos de navegação definidos e decisões de interface fundamentadas nas necessidades do público."
+  },
+  {
+    "key": "empreendedorismo-criativo",
+    "name": "Laboratório de empreendedorismo criativo",
+    "theme": "Empreendedorismo e gestão",
+    "description": "Atividade prática sobre a transformação de uma ideia em proposta de negócio, com definição de público, proposta de valor, canais de atendimento e recursos necessários à operação. Estudantes de Administração do 2º e 4º semestres organizarão essas informações em equipe, compararão alternativas e apresentarão os principais argumentos para a viabilidade de sua proposta.",
+    "audience": "Estudantes de Administração do 2º e 4º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de empreendedorismo e gestão",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A elaboração conjunta de propostas de negócio aproxima os conteúdos de gestão das decisões sobre clientes, recursos e organização da operação.",
+    "objective": "Estruturar uma proposta de negócio que articule público, proposta de valor, recursos e etapas iniciais de operação, apresentando os critérios utilizados."
+  },
+  {
+    "key": "cidadania-digital",
+    "name": "Roda de conversa sobre cidadania digital",
+    "theme": "Cidadania e direitos",
+    "description": "Roda de conversa sobre privacidade, proteção de informações e responsabilidade nas relações estabelecidas em ambientes digitais. Estudantes de Direito do 4º e 6º semestres analisarão situações de estudo e discutirão como identificar direitos envolvidos, formular perguntas relevantes e comunicar pontos de atenção de maneira clara e fundamentada.",
+    "audience": "Estudantes de Direito do 4º e 6º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de estudos em cidadania e direitos",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "As relações digitais exigem leitura crítica das responsabilidades de seus participantes e capacidade de organizar argumentos sobre direitos e privacidade.",
+    "objective": "Analisar situações de estudo sobre cidadania digital e desenvolver argumentos que relacionem privacidade, proteção de informações e responsabilidade."
+  },
+  {
+    "key": "escuta-acolhimento",
+    "name": "Vivência de escuta e acolhimento",
+    "theme": "Saúde e bem-estar",
+    "description": "Vivência educativa dedicada à escuta atenta, à comunicação respeitosa e ao reconhecimento de limites nas relações de acolhimento. Estudantes de Psicologia do 3º e 5º semestres participarão de exercícios em pequenos grupos, observarão formas de formular perguntas e compartilharão reflexões sobre postura ética, respeito às diferenças e cuidado na comunicação.",
+    "audience": "Estudantes de Psicologia do 3º e 5º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de facilitação em escuta e acolhimento",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "O exercício educativo da escuta contribui para reconhecer limites, evitar julgamentos precipitados e desenvolver uma comunicação respeitosa na formação acadêmica.",
+    "objective": "Exercitar a escuta atenta e a formulação de perguntas, identificando aspectos éticos e limites de atuação nas situações educativas propostas."
+  },
+  {
+    "key": "financas-na-pratica",
+    "name": "Finanças na prática: planejamento orçamentário",
+    "theme": "Educação financeira",
+    "description": "Oficina de organização orçamentária com classificação de receitas, despesas e custos, elaboração de planilhas e leitura de indicadores. Estudantes de Ciências Contábeis do 2º e 6º semestres trabalharão com um conjunto de dados didáticos para construir um orçamento, comparar cenários e apresentar os efeitos de diferentes escolhas sobre o resultado projetado.",
+    "audience": "Estudantes de Ciências Contábeis do 2º e 6º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de planejamento contábil e financeiro",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A construção de um orçamento com dados didáticos permite integrar classificação contábil, organização de planilhas e interpretação dos resultados de diferentes cenários.",
+    "objective": "Elaborar uma planilha orçamentária, classificar receitas e despesas e interpretar os indicadores produzidos a partir dos cenários de estudo."
+  },
+  {
+    "key": "processos-sustentaveis",
+    "name": "Desafio de processos sustentáveis",
+    "theme": "Sustentabilidade",
+    "description": "Desafio em equipe sobre eficiência e redução de desperdícios em processos produtivos, com mapeamento de etapas, identificação de perdas e definição de indicadores. Estudantes de Engenharia de Produção do 4º e 8º semestres analisarão um estudo de caso e apresentarão propostas de melhoria que considerem uso de recursos, organização do trabalho e acompanhamento de resultados.",
+    "audience": "Estudantes de Engenharia de Produção do 4º e 8º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de melhoria de processos e sustentabilidade",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A análise integrada de etapas, perdas e indicadores amplia a compreensão dos impactos do uso de recursos e das oportunidades de melhoria dos processos produtivos.",
+    "objective": "Mapear um processo do estudo de caso, identificar desperdícios e propor melhorias acompanhadas de indicadores de eficiência e uso de recursos."
+  },
+  {
+    "key": "qualidade-software",
+    "name": "Encontro sobre qualidade de software",
+    "theme": "Tecnologia e inovação",
+    "description": "Encontro dedicado às práticas de qualidade no desenvolvimento de aplicações, reunindo testes automatizados, revisão de código e avaliação de acessibilidade. Estudantes de Engenharia de Software do 5º e 7º semestres examinarão exemplos de implementação, identificarão oportunidades de melhoria e discutirão como registrar critérios de aceitação e evidências de verificação.",
+    "audience": "Estudantes de Engenharia de Software do 5º e 7º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de qualidade e desenvolvimento de software",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A discussão conjunta de testes, revisão e acessibilidade favorece uma avaliação mais completa da qualidade e da clareza dos critérios utilizados no desenvolvimento de software.",
+    "objective": "Identificar melhorias em exemplos de aplicações e definir critérios de aceitação e estratégias de verificação para funcionalidade, código e acessibilidade."
+  },
+  {
+    "key": "planejamento-equipes",
+    "name": "Seminário de planejamento e equipes",
+    "theme": "Empreendedorismo e gestão",
+    "description": "Seminário sobre organização de projetos em equipe, com foco na definição de objetivos, distribuição de responsabilidades, elaboração de cronogramas e acompanhamento de entregas. Estudantes de Administração do 6º e 8º semestres apresentarão propostas de planejamento e debaterão formas de comunicar decisões, acompanhar indicadores e ajustar atividades ao longo de um projeto.",
+    "audience": "Estudantes de Administração do 6º e 8º semestres.",
+    "requesterName": "Coordenação de atividades acadêmicas",
+    "speaker": "Equipe de planejamento e gestão de projetos",
+    "organizer": "Coordenação de atividades acadêmicas",
+    "justification": "A articulação entre objetivos, responsabilidades e acompanhamento das entregas contribui para a organização do trabalho coletivo e a comunicação durante os projetos.",
+    "objective": "Apresentar um plano de projeto com objetivos, responsabilidades, cronograma e indicadores, justificando as escolhas de organização e acompanhamento da equipe."
+  }
+]

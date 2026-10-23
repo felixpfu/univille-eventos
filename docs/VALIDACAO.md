@@ -14,6 +14,8 @@ npm audit --omit=dev
 
 A revisão funcional da v1.3.1 registrou **30 testes aprovados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
 
+Na v1.4.1, a suíte inclui também cinco testes do operador de conteúdo para apresentação, totalizando **35 testes**. Eles usam HTTP e SQLite temporários para conferir preservação dos oito eventos e de um evento de solicitante com cadastros compartilhados; ausência de alterações em repetição; recusa de edições manuais e colisões antes da primeira escrita; prévia sem rede; e retomada de atualização interrompida.
+
 | Grupo                     | Evidências                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Autenticação e permissões | Hash de senha, sessões, origem/CSRF, cookies de produção, propriedade de pedidos, desativação e expiração.                                                        |
@@ -26,6 +28,7 @@ A revisão funcional da v1.3.1 registrou **30 testes aprovados**: 18 de backend,
 | Notificações              | Sem inscrição automática; destinatário da própria conta; indisponibilidade explícita sem SMTP; confirmação, expiração, uso único e descadastro.                   |
 | Processamento de e-mail   | Preferências e setor, retirada de consentimento antes do envio, versões/cancelamentos, fuso de São Paulo, deduplicação, retentativas e erros sem dados sensíveis. |
 | Listagens                 | Volume e conteúdo da listagem permanecem corretos; eventos e recursos são carregados em duas consultas, sem uma consulta adicional por evento.                    |
+| Conteúdo para apresentação | Alterações limitadas ao plano; IDs, reservas, fila, vínculos e dados de outros eventos preservados; catálogos externos reutilizados sem sobrescrita; repetição e retomada sem duplicações. |
 | Arquivo PowerPoint        | ZIP/OOXML válido, oito colunas editáveis, logo oficial, ordenação, datas, escape XML, período vazio, paginação e preservação de textos longos.                    |
 
 As integrações do backend utilizam servidor HTTP e SQLite reais. Somente o transporte SMTP é simulado: **nenhum teste envia e-mail**. Os testes de PPTX inspecionam o arquivo produzido. O CI instala pelo lockfile, testa e compila com Node 24; não publica e não contém credenciais de produção.
@@ -39,6 +42,8 @@ Na v1.2.0, foram conferidos os dois fluxos de cadastro, a recusa de CNPJ inváli
 Na v1.3.0, foram conferidos os oito eventos fictícios com manhã/tarde/noite e suas descrições, cursos e vários semestres. A carga via API aprovou oito pedidos; uma segunda execução ignorou os oito sem criar duplicações. A revisão em desktop e celular conferiu lista, calendário e diálogo de detalhes com descrição e participantes. O teste de backend verifica que apenas aprovados são públicos e que objetivo, justificativa, observações e dados de conta não vazam. A migração v4 preserva registros sem preencher descrições a partir de textos internos.
 
 Na v1.3.1, os oito exemplos anteriores foram atualizados via API para Auditório e Miniauditório, mantendo os mesmos IDs, conteúdo, cursos, semestres e horários. Foram criados dois locais sem presumir recursos ou capacidade; os catálogos antigos permaneceram intactos. A segunda execução do atualizador e a repetição do seed ignoraram os oito registros, sem novas versões ou duplicações. O filtro público e o cadastro priorizam as duas opções sob o rótulo “Local do evento”. A ordem das opções foi conferida no navegador.
+
+Na v1.4.1, os oito exemplos receberam textos de apresentação em linguagem institucional. A prévia local no navegador conferiu títulos e temas sem rótulos de demonstração, cursos e semestres na lista, além de descrição completa, equipe ministrante e realização nos detalhes. Datas, horários, locais e a separação calendário/lista permaneceram iguais. A origem dos exemplos continua documentada internamente em [APRESENTACAO.md](APRESENTACAO.md), sem alegação de programação oficial verificada. Por escolha expressa do responsável, o evento criado por ele não integra o plano de edição.
 
 O roteiro deve ser repetido após mudanças visuais ou de fluxo. Essas verificações pontuais não constituem uma suíte permanente de navegador nem uma avaliação completa em todos os dispositivos.
 

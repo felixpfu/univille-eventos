@@ -1,5 +1,7 @@
 # Eventos fictícios de demonstração
 
+Este documento descreve o conjunto e os scripts históricos de carga e atualização de locais. Após a solicitação de acabamento institucional, os textos e nomes exibidos podem ser atualizados pelo procedimento de [conteúdo para apresentação](APRESENTACAO.md), preservando os oito registros e sua origem interna. Depois dessa atualização, os scripts históricos devem interromper ao encontrar diferenças; não são uma forma de restaurar os textos antigos.
+
 O responsável solicitou exemplos públicos com horários variados, descrição e participação por curso e semestre. O conjunto versionado em `scripts/demo-events.json` contém oito eventos entre **26/10 e 02/12/2026**, cobrindo manhã, tarde e noite. Os títulos e cursos mantêm “· Demonstração”; o tema é “Demonstração acadêmica”. As descrições informam explicitamente que os eventos são fictícios. Esses exemplos **não representam programação oficial nem confirmam a oferta dos cursos no campus**.
 
 Os locais usam os nomes exatos **Auditório** e **Miniauditório**, informados pelo responsável para o campus São Bento do Sul. Não são atribuídas capacidades, equipamentos ou outras características não fornecidas. Os eventos não solicitam recursos desses locais.

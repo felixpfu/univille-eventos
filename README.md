@@ -92,9 +92,9 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão de 23/10/2026 possui **30 testes automatizados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+A revisão de 23/10/2026 possui **35 testes automatizados**: 18 de backend, sete de notificações, três de PowerPoint, dois de regressão das listagens e cinco da atualização de conteúdo para apresentação. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
 
-O roteiro específico para a separação entre calendário/lista e as confirmações de ações está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-alteração-de-calendário-e-confirmações). Os registros históricos acima não comprovam a execução desse novo roteiro; os resultados devem ser registrados após verificar a alteração.
+O roteiro específico para a separação entre calendário/lista e as confirmações de ações está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-alteração-de-calendário-e-confirmações). Os resultados efetivamente conferidos em cada versão estão registrados nesse documento.
 
 O responsável autorizou que **as alterações solicitadas neste projeto sejam versionadas no GitHub e publicadas em flxpfu.com.br** após verificação. A autorização está registrada em [AGENTS.md](AGENTS.md). O procedimento de empacotar, publicar, verificar a versão ativa e reverter está em [DEPLOYMENT.md](docs/DEPLOYMENT.md). O site anterior e os snapshots de atualização são preservados.
 
@@ -110,7 +110,7 @@ Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. 
 
 ## Exemplos de eventos
 
-A carga opcional e explícita de oito eventos fictícios, com horários, descrições, cursos e semestres variados, está documentada em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md). O script usa a API autenticada, valida a ordem de envio/aprovação e não substitui registros existentes. Os exemplos são identificados como demonstração; migrações e inicialização não executam essa carga.
+A carga opcional e explícita de oito eventos de exemplo, com horários, descrições, cursos e semestres variados, está documentada em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md). A atualização de [conteúdo para apresentação](docs/APRESENTACAO.md) dá aos exemplos linguagem institucional, sem os rótulos de demonstração na agenda, mantendo sua origem documentada e as observações internas. Os scripts usam a API autenticada e preservam registros alheios ao plano; migrações e inicialização não executam essas operações. O conteúdo preparado não representa programação oficial verificada.
 
 Os locais **Auditório** e **Miniauditório**, informados pelo responsável, aparecem primeiro nas opções de **Local do evento**. Os exemplos usam esses locais sem presumir equipamentos ou capacidade; o procedimento para atualizar exemplos já publicados está em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 
