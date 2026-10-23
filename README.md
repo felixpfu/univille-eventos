@@ -7,10 +7,10 @@ Sistema acadêmico de solicitação, aprovação e consulta de eventos para a **
 
 ## Funcionalidades
 
-| Perfil        | Acesso                                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Visitante     | Agenda dos aprovados do mês atual e dos dois seguintes, sem login. Cadastro opcional para preferências de e-mail.                |
-| Solicitante   | Login por e-mail e senha; rascunhos, envio, acompanhamento, edição, correção de rejeitados e cancelamento de pendentes próprios. |
+| Perfil        | Acesso                                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Visitante     | Agenda dos aprovados, com consulta de meses passados e futuros, sem login. Cadastro opcional para preferências de e-mail.           |
+| Solicitante   | Login por e-mail e senha; rascunhos, envio, acompanhamento, edição, correção de rejeitados e cancelamento de pendentes próprios.    |
 | Administrador | Aprovação/rejeição com prioridade por envio, edição/cancelamento de aprovados, usuários, cadastros e relatórios CSV/PowerPoint/PDF. |
 
 O cadastro começa pela escolha do perfil: visitante informa e-mail e senha; solicitante informa também nome completo, empresa e CNPJ. A empresa e o CNPJ ficam restritos à conta e à administração.
@@ -19,7 +19,13 @@ O login é comum aos três perfis e o servidor decide o acesso pela conta. O cad
 
 A **Gestão de eventos** abre em **Todos os status**, incluindo os aprovados já publicados na agenda. O filtro **Aguardando aprovação** permite consultar apenas a fila pendente. Rascunhos continuam na área do próprio autor.
 
-A página inicial abre na aba **Calendário**, mantendo a grade, a navegação pelos três meses e os filtros por setor/curso, tema e ambiente. Os cards e resumos dos eventos aparecem apenas na aba **Lista**. Clicar em um dia do calendário abre a lista filtrada naquela data; **Ver todos** limpa esse recorte por dia. A busca e os demais filtros continuam disponíveis nas duas visualizações. O tema claro é o padrão, com modo escuro opcional e layout para computador e celular. A interface e o PowerPoint utilizam a [marca oficial, com origem documentada](public/branding/SOURCE.md).
+A página inicial abre na aba **Calendário**. As abas de três meses aparecem tanto no calendário quanto na **Lista**, e o mês selecionado é preservado ao alternar entre essas visualizações. A lista mostra somente o mês selecionado; clicar em um dia da grade abre a lista restrita àquela data. **Ver todos do mês** remove apenas esse recorte por dia, mantendo o mês e os demais filtros.
+
+A consulta começa no mês atual e nos dois seguintes, mas permite navegar para o passado e o futuro. O botão **+ Próximos três meses** e a seta **Três meses anteriores** mudam o grupo de abas; as setas de mês avançam ou recuam um mês nas duas visualizações. **Mês atual** retorna ao mês da data corrente. Busca e filtros por setor/curso, tema e local do evento continuam disponíveis no calendário e na lista. Navegar para outros meses consulta os registros existentes; não cria eventos.
+
+A API pública aceita `GET /api/events?month=YYYY-MM`: o parâmetro indica o primeiro mês de uma janela de três meses, entre `1900-01` e `9999-10`. Sem o parâmetro, usa o mês atual de São Paulo e os dois seguintes. Todas as janelas retornam exclusivamente eventos aprovados e os campos públicos permitidos. A interface permite selecionar até dezembro de 9999 dentro da última janela válida.
+
+O tema claro é o padrão, com modo escuro opcional e layout para computador e celular. A interface e o PowerPoint utilizam a [marca oficial, com origem documentada](public/branding/SOURCE.md).
 
 Os eventos aprovados têm descrição pública opcional e detalhes de participação por curso e semestres. A descrição é um campo explícito: objetivo, justificativa e observações continuam internos. O botão **Ver detalhes** reúne essas informações para visitantes.
 
@@ -93,9 +99,9 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão de 23/10/2026 possui **43 testes automatizados**: 20 de backend, sete de notificações, cinco de PowerPoint, três de PDF, um de download PDF por HTTP, dois de regressão das listagens e cinco da atualização de conteúdo para apresentação. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+A suíte da revisão **v1.6.0** contém **54 testes automatizados**: os 43 casos anteriores, nove do cálculo de meses da agenda e dois do acesso público a janelas históricas e futuras. O helper cobre agrupamentos negativos, mudança de ano, fevereiro, limites de 1900/9999, argumentos inválidos e independência de fuso horário. Os novos casos HTTP cobrem o parâmetro de mês, os limites aceitos e a preservação das regras de publicação e privacidade. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
 
-O roteiro específico para a separação entre calendário/lista e as confirmações de ações está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-alteração-de-calendário-e-confirmações). Os resultados efetivamente conferidos em cada versão estão registrados nesse documento.
+O roteiro da navegação entre meses está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-navegação-pública-entre-meses--v160), junto ao aceite de calendário/lista e das confirmações de ações. Resultados de testes, navegador e publicação devem ser registrados nesse documento depois de executados.
 
 O responsável autorizou que **as alterações solicitadas neste projeto sejam versionadas no GitHub e publicadas em flxpfu.com.br** após verificação. A autorização está registrada em [AGENTS.md](AGENTS.md). O procedimento de empacotar, publicar, verificar a versão ativa e reverter está em [DEPLOYMENT.md](docs/DEPLOYMENT.md). O site anterior e os snapshots de atualização são preservados.
 

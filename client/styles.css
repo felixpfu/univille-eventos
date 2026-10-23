@@ -3225,6 +3225,31 @@ body {
   font-size: 12px;
   color: var(--muted);
 }
+.agenda-month-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.agenda-month-navigation > .icon-button {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+}
+.agenda-month-navigation .agenda-month-tabs {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.agenda-month-navigation .agenda-month-tabs > button {
+  min-width: 0;
+  text-align: center;
+}
+.agenda-month-short {
+  display: none;
+}
 .agenda-month-tabs {
   display: flex;
   gap: 26px;
@@ -5099,5 +5124,32 @@ input[type="checkbox"] {
   }
   .public-event-facts {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .agenda-month-navigation {
+    gap: 6px;
+  }
+  .agenda-month-navigation > .icon-button {
+    flex-basis: 32px;
+    width: 32px;
+    height: 40px;
+  }
+  .agenda-month-navigation .agenda-month-tabs {
+    gap: 4px;
+  }
+  .agenda-month-navigation .agenda-month-tabs small {
+    display: block;
+    margin-left: 0;
+    margin-top: 3px;
+  }
+}
+@media (max-width: 359px) {
+  .agenda-month-name {
+    display: none;
+  }
+  .agenda-month-short {
+    display: inline;
   }
 }

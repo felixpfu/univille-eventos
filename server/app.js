@@ -336,9 +336,14 @@ export function createApp(options = {}) {
     res.json(metadata(db, ["requester", "admin"].includes(req.user?.role))),
   );
   api.get("/events", (req, res) => {
-    const { start, end } = publicWindow(now);
-    const where = ["status='approved'", "date>=?", "date<?"];
-    const params = [start, end];
+    const query = req.query;
+    // Express's simple query parser keeps bracket notation in literal keys;
+    // reject those attempts rather than silently using the default month.
+    if (Object.keys(query).some((key) => key.startsWith("month[")))
+      fail(400, "Informe um único mês para a agenda.", "VALIDATION_ERROR");
+    const { from, to } = publicWindow(now, query.month);
+    const where = ["status='approved'", "date>=?", "date<=?"];
+    const params = [from, to];
     if (req.query.courseId) {
       if (typeof req.query.courseId !== "string")
         fail(400, "Filtro de setor/curso inválido.", "VALIDATION_ERROR");
@@ -365,7 +370,7 @@ export function createApp(options = {}) {
       audienceCourseName: event.audienceCourseName,
       audienceSemester: event.audienceSemester,
     }));
-    res.json({ events });
+    res.json({ events, from, to });
   });
   api.get("/requests", requester, (req, res) =>
     res.json({ requests: eventList(db, "authorId=?", [req.user.id]) }),

@@ -103,12 +103,25 @@ export function localDate(now) {
   }).formatToParts(now());
   return `${parts.find((p) => p.type === "year").value}-${parts.find((p) => p.type === "month").value}-${parts.find((p) => p.type === "day").value}`;
 }
-export function publicWindow(now) {
-  const today = localDate(now);
-  const start = `${today.slice(0, 7)}-01`;
-  const endDate = new Date(`${start}T12:00:00Z`);
-  endDate.setUTCMonth(endDate.getUTCMonth() + 3);
-  return { start, end: endDate.toISOString().slice(0, 10) };
+export function publicWindow(now, month) {
+  const selected = month === undefined ? localDate(now).slice(0, 7) : month;
+  if (
+    typeof selected !== "string" ||
+    !/^\d{4}-(0[1-9]|1[0-2])$/.test(selected) ||
+    Number(selected.slice(0, 4)) < 1900 ||
+    selected > "9999-10"
+  )
+    fail(
+      400,
+      "Selecione um mês válido entre janeiro de 1900 e outubro de 9999.",
+      "VALIDATION_ERROR",
+    );
+  const from = `${selected}-01`;
+  const lastDate = new Date(`${from}T12:00:00Z`);
+  // Day zero of the month after this window is its final included day.
+  // Inclusive dates also keep the 9999-10 window within four-digit years.
+  lastDate.setUTCMonth(lastDate.getUTCMonth() + 3, 0);
+  return { from, to: lastDate.toISOString().slice(0, 10) };
 }
 export function versionCheck(row, version) {
   if (!Number.isInteger(version) || version !== row.version)

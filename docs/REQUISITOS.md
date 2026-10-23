@@ -22,7 +22,15 @@ Nome da empresa e CNPJ são dados da conta: aparecem somente nas respostas auten
 
 ## Agenda e identidade visual
 
-A agenda contém exclusivamente aprovados do **mês atual e dos dois seguintes**, no fuso `America/Sao_Paulo`, em ordem cronológica. Não é uma janela móvel de 90 dias. Calendário é a visualização inicial, com aba alternativa em lista, busca e filtros por setor/curso, tema e ambiente. A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro opcional e layout responsivo.
+A agenda contém exclusivamente eventos **aprovados**, em ordem cronológica, e permite consultar meses passados e futuros. A janela inicial começa no mês atual do fuso `America/Sao_Paulo` e inclui os dois seguintes. É um agrupamento de meses de calendário, não uma janela móvel de 90 dias nem uma restrição da consulta aos próximos três meses.
+
+**Calendário** é a visualização inicial. Calendário e **Lista** apresentam as mesmas três abas de mês; alternar a visualização preserva o mês selecionado. A lista apresenta apenas os eventos desse mês, com busca e filtros por setor/curso, tema e local do evento. Selecionar um dia na grade abre a lista restrita à data. **Ver todos do mês** limpa somente a seleção de dia, preservando mês, busca e demais filtros.
+
+O botão **+ Próximos três meses** e a seta **Três meses anteriores** movem o grupo de abas para o futuro ou o passado. As setas de mês permitem avançar ou recuar um mês em ambas as visualizações. **Mês atual** retorna ao mês da data corrente. O cálculo usa índices inteiros de ano e mês, sem aritmética de dias, e mantém três meses válidos nas bordas de janeiro de 1900 e dezembro de 9999. Navegar consulta os registros existentes e não cadastra eventos para períodos vazios.
+
+`GET /api/events?month=YYYY-MM` recebe o primeiro mês da janela pública de três meses. O formato e o intervalo de `1900-01` a `9999-10` são validados; a última janela contém outubro, novembro e dezembro de 9999. Sem o parâmetro, a API mantém a janela inicial do mês atual de São Paulo e dos dois seguintes. Filtros e escolha de período não ampliam os estados publicados nem os campos permitidos na resposta.
+
+A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro opcional e layout responsivo.
 
 A resposta pública apresenta nome, descrição pública, tema, data, início/fim, local, palestrante, setor/curso, realização e público-alvo com seu curso e semestre. A descrição pública é um campo explícito e opcional de até 2.000 caracteres, distinto do objetivo interno. Eventos existentes ficam com esse campo vazio até o preenchimento. A agenda não expõe rascunhos, pendentes, rejeitados, cancelados, autor, solicitante livre, centro de custo, objetivo, justificativas ou observações internas. O catálogo público de setores/cursos contém somente identificador e nome.
 

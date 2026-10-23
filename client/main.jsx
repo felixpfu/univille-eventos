@@ -41,6 +41,7 @@ import {
   Mail,
 } from "lucide-react";
 import Admin from "./Admin.jsx";
+import { agendaPeriod } from "./agenda-period.js";
 import "./styles.css";
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const STATUS = {
@@ -217,6 +218,7 @@ function App() {
       costCenters: [],
     }),
     [events, setEvents] = useState([]),
+    [eventsMonth, setEventsMonth] = useState(""),
     [requests, setRequests] = useState([]),
     [modal, setModal] = useState(null),
     [emailAction, setEmailAction] = useState(readEmailAction),
@@ -274,6 +276,7 @@ function App() {
     try {
       const [ev, me] = await Promise.all([api("/events"), api("/auth/me")]);
       setEvents(ev.events);
+      setEventsMonth(ev.from?.slice(0, 7) || today().slice(0, 7));
       setUser(me.user);
       if (!me.user && ["admin", "requests"].includes(page)) setPage("agenda");
       await refreshMetadata();
@@ -443,6 +446,7 @@ function App() {
           ) : page === "agenda" ? (
             <Agenda
               events={events}
+              eventsMonth={eventsMonth}
               metadata={metadata}
               loading={loading}
               onRequest={startRequest}
@@ -553,8 +557,15 @@ function App() {
     </>
   );
 }
-function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
-  const now = today().split("-").map(Number);
+function Agenda({
+  events,
+  eventsMonth,
+  metadata,
+  onRequest,
+  loading,
+  onNotifications,
+}) {
+  const [anchorMonth] = useState(() => today().slice(0, 7));
   const [monthOffset, setMonthOffset] = useState(0),
     [view, setView] = useState("calendar"),
     [search, setSearch] = useState(""),
@@ -563,12 +574,54 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
     [courseId, setCourseId] = useState(""),
     [filters, setFilters] = useState(false),
     [day, setDay] = useState(""),
-    [eventDetails, setEventDetails] = useState(null);
-  const date = new Date(now[0], now[1] - 1 + monthOffset, 1),
-    month = date.getMonth(),
-    year = date.getFullYear(),
-    prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
-  const matching = events.filter(
+    [eventDetails, setEventDetails] = useState(null),
+    [windowEvents, setWindowEvents] = useState(events),
+    [windowLoading, setWindowLoading] = useState(false),
+    [windowError, setWindowError] = useState(""),
+    [windowRetry, setWindowRetry] = useState(0);
+  const period = agendaPeriod(anchorMonth, monthOffset);
+  const { selectedMonth, windowMonth } = period;
+  const [year, monthNumber] = selectedMonth.split("-").map(Number);
+  const month = monthNumber - 1;
+  const busy = loading || windowLoading;
+  useEffect(() => {
+    setWindowError("");
+    if (windowMonth === eventsMonth) {
+      setWindowEvents(events);
+      setWindowLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    let active = true;
+    setWindowEvents([]);
+    setWindowLoading(true);
+    api(`/events?month=${windowMonth}`, { signal: controller.signal })
+      .then((data) => {
+        if (active) setWindowEvents(data.events);
+      })
+      .catch((error) => {
+        if (active) setWindowError(error.message);
+      })
+      .finally(() => {
+        if (active) setWindowLoading(false);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [windowMonth, eventsMonth, events, windowRetry]);
+  const changeMonth = (offset) => {
+    setMonthOffset(
+      Math.min(period.maxOffset, Math.max(period.minOffset, offset)),
+    );
+    setDay("");
+  };
+  const goToCurrentMonth = () => {
+    const [currentYear, currentMonth] = today().split("-").map(Number);
+    const [anchorYear, anchorNumber] = anchorMonth.split("-").map(Number);
+    changeMonth((currentYear - anchorYear) * 12 + currentMonth - anchorNumber);
+  };
+  const matching = windowEvents.filter(
     (e) =>
       (!themeId || e.themeId === themeId) &&
       (!roomId || e.roomId === roomId) &&
@@ -590,19 +643,19 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
           .toLocaleLowerCase("pt-BR")
           .includes(search.toLocaleLowerCase("pt-BR"))),
   );
-  const monthEvents = matching.filter((e) => e.date.startsWith(prefix));
-  const visible = matching.filter((e) => !day || e.date === day);
+  const monthEvents = matching.filter((e) => e.date.startsWith(selectedMonth));
+  const visible = monthEvents.filter((e) => !day || e.date === day);
   const hasFilters = search || themeId || roomId || courseId || day;
   return (
     <>
       <div className="page-heading agenda-heading">
         <div>
           <span className="eyebrow">UNIVILLE · CAMPUS SÃO BENTO DO SUL</span>
-          <h1>Próximos eventos</h1>
+          <h1>Agenda de eventos</h1>
           <p>
-            Confira os encontros aprovados para este mês e os dois próximos.
-            <br className="desktop-break" /> Conhecimento, experiências e novas
-            conexões em um só lugar.
+            Consulte os encontros aprovados e navegue pelos meses.
+            <br className="desktop-break" /> Veja os próximos eventos e os que
+            já passaram.
           </p>
         </div>
         <button className="button primary" onClick={onRequest}>
@@ -639,65 +692,84 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
             </button>
           </div>
           <span className="agenda-window-label">
-            {events.length}{" "}
-            {events.length === 1 ? "evento aprovado" : "eventos aprovados"} ·
-            próximos 3 meses
+            {busy ? (
+              "Carregando eventos…"
+            ) : windowError ? (
+              "Eventos indisponíveis"
+            ) : (
+              <>
+                {monthEvents.length}{" "}
+                {monthEvents.length === 1
+                  ? "evento aprovado"
+                  : "eventos aprovados"}{" "}
+                · {MONTHS[month]} {year}
+              </>
+            )}
           </span>
         </div>
-        {view === "calendar" && (
+        <div className="agenda-month-navigation">
+          <IconButton
+            label="Três meses anteriores"
+            disabled={period.windowOffset <= period.minOffset}
+            onClick={() => changeMonth(period.windowOffset - 3)}
+          >
+            <ChevronLeft size={20} />
+          </IconButton>
           <div className="agenda-month-tabs" aria-label="Meses da agenda">
-            {Array.from({ length: 3 }, (_, i) => {
-              const d = new Date(now[0], now[1] - 1 + i, 1);
+            {period.months.map(({ key, offset }) => {
+              const [tabYear, tabMonth] = key.split("-").map(Number);
               return (
                 <button
-                  key={i}
-                  className={i === monthOffset ? "selected" : ""}
-                  aria-pressed={i === monthOffset}
-                  onClick={() => {
-                    setMonthOffset(i);
-                    setDay("");
-                  }}
+                  key={key}
+                  aria-label={`${MONTHS[tabMonth - 1]} ${tabYear}`}
+                  className={key === selectedMonth ? "selected" : ""}
+                  aria-pressed={key === selectedMonth}
+                  onClick={() => changeMonth(offset)}
                 >
-                  {MONTHS[d.getMonth()]} <small>{d.getFullYear()}</small>
+                  <span className="agenda-month-name">
+                    {MONTHS[tabMonth - 1]}
+                  </span>
+                  <span className="agenda-month-short" aria-hidden="true">
+                    {MONTHS[tabMonth - 1].slice(0, 3)}
+                  </span>{" "}
+                  <small>{tabYear}</small>
                 </button>
               );
             })}
           </div>
-        )}
+          <IconButton
+            label="Próximos três meses"
+            disabled={period.windowOffset >= period.maxOffset - 2}
+            onClick={() => changeMonth(period.windowOffset + 3)}
+          >
+            <Plus size={20} />
+          </IconButton>
+        </div>
         <div className="agenda-toolbar">
           <div className="month-selector">
             <h2>
-              {view === "calendar" ? (
-                <>
-                  {MONTHS[month]} <span>{year}</span>
-                </>
-              ) : (
-                "Agenda dos próximos três meses"
-              )}
+              {MONTHS[month]} <span>{year}</span>
             </h2>
-            {view === "calendar" && (
-              <div>
-                <IconButton
-                  label="Mês anterior"
-                  disabled={monthOffset === 0}
-                  onClick={() => {
-                    setMonthOffset((x) => x - 1);
-                    setDay("");
-                  }}
-                >
-                  <ChevronLeft size={18} />
-                </IconButton>
-                <IconButton
-                  label="Próximo mês"
-                  disabled={monthOffset === 2}
-                  onClick={() => {
-                    setMonthOffset((x) => x + 1);
-                    setDay("");
-                  }}
-                >
-                  <ChevronRight size={18} />
-                </IconButton>
-              </div>
+            <div>
+              <IconButton
+                label="Mês anterior"
+                disabled={period.offset <= period.minOffset}
+                onClick={() => changeMonth(period.offset - 1)}
+              >
+                <ChevronLeft size={18} />
+              </IconButton>
+              <IconButton
+                label="Próximo mês"
+                disabled={period.offset >= period.maxOffset}
+                onClick={() => changeMonth(period.offset + 1)}
+              >
+                <ChevronRight size={18} />
+              </IconButton>
+            </div>
+            {selectedMonth !== today().slice(0, 7) && (
+              <button className="text-button" onClick={goToCurrentMonth}>
+                Mês atual
+              </button>
             )}
           </div>
           <div className="agenda-tools">
@@ -781,6 +853,14 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
             </button>
           </div>
         )}
+        {windowError && (
+          <div className="error-banner" role="alert">
+            {windowError}
+            <button onClick={() => setWindowRetry((value) => value + 1)}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
         {view === "calendar" ? (
           <>
             <Calendar
@@ -796,7 +876,7 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
             <p className="muted">
               Selecione um dia para consultar seus eventos na aba Lista.
             </p>
-            {loading && (
+            {busy && (
               <div className="loading-state" role="status">
                 <LoaderCircle className="spin" size={19} />
                 Atualizando eventos…
@@ -807,22 +887,22 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
           <>
             <div className="list-section-heading">
               <h3>
-                {day ? `Eventos de ${dateFormat(day)}` : "Todos os encontros"}
+                {day ? `Eventos de ${dateFormat(day)}` : "Encontros deste mês"}
               </h3>
               {day ? (
                 <button className="text-button" onClick={() => setDay("")}>
-                  Ver todos os encontros <X size={14} />
+                  Ver todos do mês <X size={14} />
                 </button>
               ) : (
                 <span className="count-pill">{visible.length}</span>
               )}
             </div>
-            {loading ? (
+            {busy ? (
               <div className="loading-state" role="status">
                 <LoaderCircle className="spin" size={19} />
                 Atualizando eventos…
               </div>
-            ) : visible.length ? (
+            ) : windowError ? null : visible.length ? (
               <div className="event-list">
                 {visible.map((event) => (
                   <EventRow
@@ -838,12 +918,12 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
                 <h3>
                   {hasFilters
                     ? "Nenhum evento encontrado."
-                    : "Novos encontros vão aparecer por aqui."}
+                    : "Nenhum evento aprovado neste mês."}
                 </h3>
                 <p>
                   {hasFilters
                     ? "Experimente outro período ou ajuste os filtros."
-                    : "Os eventos são publicados assim que a administração os aprova."}
+                    : "Escolha outro mês para consultar a agenda."}
                 </p>
                 {!hasFilters && (
                   <button className="text-button" onClick={onRequest}>

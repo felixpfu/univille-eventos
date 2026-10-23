@@ -2011,3 +2011,228 @@ test("Version 3 description migration preserves all records, leaves internal tex
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("Public agenda loads approved historical and future three-month windows without exposing internal fields", async () => {
+  const f = await fixture();
+  try {
+    const c = await catalog(f);
+    const authorId = f.db
+      .prepare("SELECT id FROM users WHERE role='admin'")
+      .get().id;
+    const add = (id, date, status = "approved", startTime = "19:00") => {
+      f.db
+        .prepare(
+          `INSERT INTO events(id,authorId,name,publicDescription,themeId,date,startTime,endTime,roomId,courseId,costCenterId,requesterName,speaker,audience,organizer,justification,objective,notes,status,createdAt,updatedAt)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        )
+        .run(
+          id,
+          authorId,
+          `Evento ${id}`,
+          "Apresentação pública",
+          c.theme.id,
+          date,
+          startTime,
+          "23:00",
+          c.room.id,
+          c.course.id,
+          c.cost.id,
+          "SOLICITANTE-INTERNO",
+          "Palestrante público",
+          "Comunidade",
+          "Organização pública",
+          "JUSTIFICATIVA-INTERNA",
+          "OBJETIVO-INTERNO",
+          "OBSERVAÇÕES-INTERNAS",
+          status,
+          "2026-10-23T15:00:00.000Z",
+          "2026-10-23T15:00:00.000Z",
+        );
+    };
+    for (const [id, date] of [
+      ["before-history", "2024-01-31"],
+      ["april-end", "2024-04-30"],
+      ["march-start", "2024-03-01"],
+      ["leap-late", "2024-02-29"],
+      ["after-history", "2024-05-01"],
+      ["before-default", "2026-09-30"],
+      ["default-start", "2026-10-01"],
+      ["november-start", "2026-11-01"],
+      ["default-end", "2026-12-31"],
+      ["future-start", "2027-01-01"],
+      ["january-end", "2027-01-31"],
+      ["future-end", "2027-03-31"],
+      ["after-future", "2027-04-01"],
+      ["lower-start", "1900-01-01"],
+      ["lower-end", "1900-03-31"],
+      ["before-upper", "9999-09-30"],
+      ["upper-start", "9999-10-01"],
+      ["upper-end", "9999-12-31"],
+    ])
+      add(id, date);
+    add("leap-early", "2024-02-29", "approved", "09:00");
+    for (const status of ["draft", "pending", "rejected", "cancelled"])
+      add(`private-${status}`, "2024-02-29", status);
+    for (const [query, from, to, ids] of [
+      [
+        "",
+        "2026-10-01",
+        "2026-12-31",
+        ["default-start", "november-start", "default-end"],
+      ],
+      [
+        "?month=2024-02",
+        "2024-02-01",
+        "2024-04-30",
+        ["leap-early", "leap-late", "march-start", "april-end"],
+      ],
+      [
+        "?month=2026-11",
+        "2026-11-01",
+        "2027-01-31",
+        ["november-start", "default-end", "future-start", "january-end"],
+      ],
+      [
+        "?month=2027-01",
+        "2027-01-01",
+        "2027-03-31",
+        ["future-start", "january-end", "future-end"],
+      ],
+      [
+        "?month=1900-01",
+        "1900-01-01",
+        "1900-03-31",
+        ["lower-start", "lower-end"],
+      ],
+      [
+        "?month=9999-10",
+        "9999-10-01",
+        "9999-12-31",
+        ["upper-start", "upper-end"],
+      ],
+    ]) {
+      const response = await f.request(`/events${query}`);
+      assert.equal(response.status, 200, query);
+      assert.equal(response.data.from, from);
+      assert.equal(response.data.to, to);
+      assert.deepEqual(
+        response.data.events.map((event) => event.id),
+        ids,
+        query,
+      );
+    }
+    const publicFields = [
+      "id",
+      "name",
+      "publicDescription",
+      "themeId",
+      "themeName",
+      "date",
+      "startTime",
+      "endTime",
+      "roomId",
+      "roomName",
+      "speaker",
+      "courseId",
+      "courseName",
+      "organizer",
+      "audience",
+      "audienceCourseId",
+      "audienceCourseName",
+      "audienceSemester",
+    ].sort();
+    const path =
+      "/events?month=2024-02&status=draft&role=admin&from=1900-01-01&to=9999-12-31";
+    const publicResponse = await f.request(path);
+    assert.equal(publicResponse.status, 200);
+    assert.deepEqual(
+      publicResponse.data.events.map((event) => event.id),
+      ["leap-early", "leap-late", "march-start", "april-end"],
+    );
+    for (const event of publicResponse.data.events) {
+      assert.deepEqual(Object.keys(event).sort(), publicFields);
+      assert.equal(event.publicDescription, "Apresentação pública");
+    }
+    assert.ok(!JSON.stringify(publicResponse.data).includes("INTERNO"));
+    assert.ok(!JSON.stringify(publicResponse.data).includes("INTERNA"));
+    assert.ok(!JSON.stringify(publicResponse.data).includes("INTERNAS"));
+    const visitor = await register(
+      f,
+      "history-visitor@example.test",
+      "visitor",
+    );
+    const requester = await register(f, "history-requester@example.test");
+    for (const cookie of [visitor.cookie, requester.cookie, f.admin])
+      assert.deepEqual(
+        (await f.request(path, { cookie })).data,
+        publicResponse.data,
+        "public projection is identical for every profile",
+      );
+    const filtered = await f.request("/events?month=2024-02&courseId=unknown");
+    assert.equal(filtered.status, 200);
+    assert.deepEqual(filtered.data, {
+      events: [],
+      from: "2024-02-01",
+      to: "2024-04-30",
+    });
+  } finally {
+    await f.close();
+  }
+});
+
+test("Public agenda month validation is strict and its default follows the São Paulo calendar", async () => {
+  let instant = new Date("2026-11-01T01:30:00Z");
+  const f = await fixture({ now: () => instant });
+  try {
+    assert.deepEqual((await f.request("/events")).data, {
+      events: [],
+      from: "2026-10-01",
+      to: "2026-12-31",
+    });
+    instant = new Date("2026-11-01T03:01:00Z");
+    assert.deepEqual((await f.request("/events")).data, {
+      events: [],
+      from: "2026-11-01",
+      to: "2027-01-31",
+    });
+    assert.deepEqual((await f.request("/events?month=2023-12")).data, {
+      events: [],
+      from: "2023-12-01",
+      to: "2024-02-29",
+    });
+    assert.deepEqual((await f.request("/events?month=2022-12")).data, {
+      events: [],
+      from: "2022-12-01",
+      to: "2023-02-28",
+    });
+    for (const query of [
+      "month",
+      "month=",
+      "month=2026-1",
+      "month=2026-00",
+      "month=2026-13",
+      "month=1899-12",
+      "month=0000-01",
+      "month=10000-01",
+      "month=9999-11",
+      "month=9999-12",
+      "month=2026-10-01",
+      "month=%202026-10",
+      "month=2026-10%20",
+      "month=2026-10&month=2026-11",
+      "month[]=2026-10",
+      "month[year]=2026&month[month]=10",
+      "month[0]=2026-10",
+      "month=%7B%7D",
+      "month=%5B%222026-10%22%5D",
+      "month=2026-10&month[]=2026-10",
+    ]) {
+      const response = await f.request(`/events?${query}`);
+      assert.equal(response.status, 400, query);
+      assert.equal(response.data.code, "VALIDATION_ERROR", query);
+      assert.ok(!("events" in response.data), query);
+    }
+  } finally {
+    await f.close();
+  }
+});
