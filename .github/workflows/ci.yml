@@ -1,0 +1,35 @@
+name: Verificar aplicação
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obter código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Configurar Node 24 LTS
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: "24.22.1"
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Executar testes de integração
+        run: npm test
+      - name: Compilar interface
+        run: npm run build
+        env:
+          BASE_PATH: /

@@ -1,0 +1,29 @@
+{
+  "name": "univille-eventos",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sistema de solicitação, aprovação e consulta de eventos acadêmicos",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch server/index.js",
+    "build": "vite build",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "admin": "node --env-file-if-exists=.env scripts/admin.js",
+    "format": "prettier --write client server scripts tests vite.config.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.10",
+    "vite": "^7.1.0"
+  }
+}
