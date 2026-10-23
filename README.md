@@ -88,7 +88,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão de 23/10/2026 possui **24 testes automatizados**: 12 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+A revisão de 23/10/2026 possui **30 testes automatizados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
 
 O responsável autorizou que **as alterações solicitadas neste projeto sejam versionadas no GitHub e publicadas em flxpfu.com.br** após verificação. A autorização está registrada em [AGENTS.md](AGENTS.md). O procedimento de empacotar, publicar, verificar a versão ativa e reverter está em [DEPLOYMENT.md](docs/DEPLOYMENT.md). O site anterior e os snapshots de atualização são preservados.
 
@@ -107,3 +107,11 @@ Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. 
 A carga opcional e explícita de oito eventos fictícios, com horários, descrições, cursos e semestres variados, está documentada em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md). O script usa a API autenticada, valida a ordem de envio/aprovação e não substitui registros existentes. Os exemplos são identificados como demonstração; migrações e inicialização não executam essa carga.
 
 Os locais **Auditório** e **Miniauditório**, informados pelo responsável, aparecem primeiro nas opções de **Local do evento**. Os exemplos usam esses locais sem presumir equipamentos ou capacidade; o procedimento para atualizar exemplos já publicados está em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
+
+## Acessos para apresentação
+
+As contas de demonstração representam os três perfis: **visitante**, para consultar a agenda e as preferências de notificações; **solicitante**, para demonstrar solicitações; e **administrador**, para aprovar pedidos, gerenciar cadastros e emitir relatórios. Seus dados permanecem no banco SQLite entre reinicializações.
+
+Abra [flxpfu.com.br](https://flxpfu.com.br/) e clique em **Entrar** com o e-mail e a senha do perfil desejado. Para trocar de perfil, use **Sair** e entre com a outra conta. Uma janela privada separa a sessão da janela comum; para demonstrar os três perfis simultaneamente, use navegadores ou perfis de navegador distintos.
+
+O sistema aceita senhas de **12 a 128 caracteres**, inclusive senhas de exatamente 12 caracteres. Os acessos são entregues ao responsável em conversa privada ou arquivo protegido; o README público não contém credenciais. Trocar a senha encerra as sessões anteriores da conta.
