@@ -12,6 +12,8 @@ Base: caderno acadêmico, referências visuais fornecidas e decisões diretas do
 
 O setor de Eventos opera por contas administrativas, sem quarto perfil. Autor autenticado e nome livre do solicitante são campos distintos. A API verifica perfil e propriedade. Contas desativadas não autenticam e suas sessões perdem o acesso. E-mails de login são únicos e senhas recebem hash.
 
+O responsável autorizou, em 23/10/2026, a divulgação dos acessos das três contas atuais de demonstração, inclusive administrador, no [README](../README.md#acessos-para-apresentação). São acessos públicos e compartilhados, exclusivos para testes com dados fictícios. Essa divulgação não cria um perfil restrito: cada conta mantém as permissões do perfil correspondente na aplicação.
+
 Há um login comum. O cadastro público permite visitante e solicitante; administrador não aparece como opção. A primeira conta administrativa é criada pela CLI, sem senha padrão. Administradores posteriores exigem sessão administrativa autorizada; não se permite remover o último administrador ativo.
 
 Ao iniciar o cadastro, a pessoa escolhe explicitamente **Visitante** ou **Solicitante**. Visitante informa apenas e-mail e senha; seu nome interno padrão é “Visitante”. Solicitante informa nome completo, e-mail, senha, nome da empresa (até 200 caracteres) e CNPJ. A API exige o perfil explícito, valida os campos conforme a escolha e bloqueia a criação pública de administradores.

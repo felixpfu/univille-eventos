@@ -16,6 +16,8 @@ Em 23/10/2026, o responsável autorizou explicitamente: “Tudo que for feito a 
 
 ## Dados e credenciais
 
-Nunca inclua no GitHub `.env` real, senhas, chaves privadas, tokens, cookies, banco de produção, snapshots, filas operacionais ou fotografias/anexos privados fornecidos pelo responsável. Utilize dados fictícios em testes e mantenha segredos apenas no arquivo protegido do servidor. Não exponha credenciais em logs, comandos ou capturas de tela.
+Nunca inclua no GitHub `.env` real, senhas privadas, chaves privadas, tokens, cookies, banco, snapshots, filas operacionais ou fotografias/anexos privados fornecidos pelo responsável. Utilize dados fictícios em testes e mantenha segredos operacionais apenas no arquivo protegido do servidor. Não exponha credenciais privadas em logs, comandos ou capturas de tela.
+
+Exceção expressa: em 23/10/2026, o responsável confirmou que deseja **publicar as três contas atuais de demonstração, incluindo administrador**, com aviso de uso exclusivo para testes. Somente os e-mails e senhas dessas três contas, listados em **Acessos para apresentação** no README, são públicos por essa autorização. Preserve o aviso de acesso compartilhado e das permissões administrativas; não amplie a exceção a outras contas ou segredos. Essa decisão não muda perfis, senhas ou permissões da aplicação.
 
 Não substitua a base publicada por dados locais e não apague solicitações para facilitar testes. Preserve o site anterior e releases necessários à reversão. O provedor de e-mail permanece sem configuração até o responsável fornecer a definição necessária; a disponibilidade deve continuar explícita na interface.

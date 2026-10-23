@@ -17,6 +17,10 @@ Os locais usam os nomes exatos **Auditório** e **Miniauditório**, informados p
 | 10/11/2026 | 10h–12h     | Encontro sobre qualidade de software     | Miniauditório | Engenharia de Software | 5º e 7º     |
 | 02/12/2026 | 19h–21h     | Seminário de planejamento e equipes      | Auditório     | Administração          | 6º e 8º     |
 
+## Acessos públicos de teste
+
+Os e-mails e senhas das três contas atuais de visitante, solicitante e administrador estão na seção [Acessos para apresentação do README](../README.md#acessos-para-apresentação), publicados por autorização expressa do responsável em 23/10/2026. São contas compartilhadas do ambiente acadêmico em `https://flxpfu.com.br/`; use apenas dados fictícios. O administrador mantém suas permissões de alterar usuários, senhas, cadastros e eventos. As demais credenciais e os dados operacionais permanecem privados.
+
 ## Operação
 
 `node scripts/seed-demo.js` mostra o plano sem autenticar, acessar o banco ou alterar o servidor. `--origin` aceita apenas `https://flxpfu.com.br` ou origem HTTP/HTTPS em `localhost`, `127.0.0.1` ou `[::1]`, com porta local opcional, sem caminho, usuário ou senha na URL. Redirecionamentos são rejeitados para evitar envio de credenciais a outro destino.

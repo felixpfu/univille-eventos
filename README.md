@@ -116,7 +116,7 @@ Leia também [REQUISITOS.md](docs/REQUISITOS.md) e [VALIDACAO.md](docs/VALIDACAO
 
 O login utiliza e-mail e senha; não há login institucional, link mágico ou recuperação automática de senha por e-mail. A confirmação de e-mail implementada serve exclusivamente às notificações e não altera o mecanismo de login. Usuários podem trocar a própria senha; redefinições administrativas seguem o procedimento interno.
 
-Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. Não há cadastro de participantes, pagamentos ou emissão de certificados. Use dados fictícios na demonstração. Anexos privados, credenciais, banco operacional, filas e tokens não integram o repositório público.
+Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. Não há cadastro de participantes, pagamentos ou emissão de certificados. Use dados fictícios na demonstração. Anexos privados, credenciais operacionais, banco, filas e tokens permanecem fora do repositório público. A exceção autorizada são os três acessos de teste listados abaixo.
 
 **Transparência:** ChatGPT/Codex participou da interpretação, implementação, documentação e verificação. A interface usa React e Lucide, o servidor usa Express e Helmet, o PowerPoint usa PptxGenJS com normalização OOXML via JSZip, o PDF usa PDFKit, o envio preparado usa Nodemailer e o frontend é compilado pelo Vite. As dependências resolvidas constam em `package-lock.json`. Não foram utilizadas plataformas Lovable ou Bolt. A marca pertence à Univille e seus direitos não são transferidos pela licença do código.
 
@@ -132,4 +132,14 @@ As contas de demonstração representam os três perfis: **visitante**, para con
 
 Abra [flxpfu.com.br](https://flxpfu.com.br/) e clique em **Entrar** com o e-mail e a senha do perfil desejado. Para trocar de perfil, use **Sair** e entre com a outra conta. Uma janela privada separa a sessão da janela comum; para demonstrar os três perfis simultaneamente, use navegadores ou perfis de navegador distintos.
 
-O sistema aceita senhas de **12 a 128 caracteres**, inclusive senhas de exatamente 12 caracteres. Os acessos são entregues ao responsável em conversa privada ou arquivo protegido; o README público não contém credenciais. Trocar a senha encerra as sessões anteriores da conta.
+**Somente para testes e apresentação acadêmica.** Estes acessos são **públicos e compartilhados**, por autorização expressa do responsável em 23/10/2026. Use apenas dados fictícios. A conta de **administrador permite alterar usuários, senhas, cadastros e eventos** do sistema atual.
+
+| Perfil        | E-mail                          | Senha          |
+| ------------- | ------------------------------- | -------------- |
+| Visitante     | `visitante@demo.example.test`   | `chJK!Q5AJU6n` |
+| Solicitante   | `solicitante@demo.example.test` | `!BXBrqX964jf` |
+| Administrador | `nulladm@univille.br`           | `KC92!zK33Z#r` |
+
+As três contas foram conferidas em `https://flxpfu.com.br/`, com login e perfil correspondentes. Seus endereços são identificadores de teste; não representam login institucional da Univille. Não altere as senhas compartilhadas durante a demonstração. Se uma senha for alterada, o responsável deverá atualizar esta tabela; a troca encerra as sessões anteriores da conta.
+
+O sistema aceita senhas de **12 a 128 caracteres**, inclusive senhas de exatamente 12 caracteres. As demais credenciais e os segredos do servidor continuam privados.
