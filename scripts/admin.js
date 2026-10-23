@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { openDatabase, transaction } from "../server/db.js";
 import { hashPassword, publicUser } from "../server/security.js";
@@ -128,7 +129,10 @@ async function main() {
     `Administrador configurado: ${user.email}. Banco em DATA_DIR/events.sqlite (DATA_DIR padrão: ./data).`,
   );
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href
+)
   main().catch((error) => {
     console.error(error.message);
     process.exitCode = 1;

@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { openDatabase } from "../server/db.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { once } from "node:events";
@@ -903,5 +906,39 @@ test("Protected writes enforce ownership, visitor permissions and session expiry
     );
   } finally {
     await f.close();
+  }
+});
+
+test("Administrator CLI provisions through the current-release symlink used in production", () => {
+  const directory = mkdtempSync(join(tmpdir(), "univille-cli-"));
+  try {
+    const link = join(directory, "current");
+    symlinkSync(fileURLToPath(new URL("../", import.meta.url)), link, "dir");
+    const result = spawnSync(
+      process.execPath,
+      [join(link, "scripts/admin.js")],
+      {
+        input: JSON.stringify({
+          email: "bootstrap@example.test",
+          name: "Admin CLI fictício",
+          password: PASSWORD,
+        }),
+        env: { ...process.env, DATA_DIR: join(directory, "state") },
+        encoding: "utf8",
+      },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Administrador configurado/);
+    const db = openDatabase(join(directory, "state/events.sqlite"));
+    try {
+      const user = db.prepare("SELECT email,role,active FROM users").get();
+      assert.equal(user.email, "bootstrap@example.test");
+      assert.equal(user.role, "admin");
+      assert.equal(user.active, 1);
+    } finally {
+      db.close();
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });

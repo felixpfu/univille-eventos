@@ -12,7 +12,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-Resultado registrado: **8 testes de integração aprovados**, sem vulnerabilidades de produção reportadas pela auditoria executada nesta entrega. O resultado da auditoria descreve a base conhecida naquela execução e deve ser reavaliado ao atualizar dependências.
+Resultado registrado: **9 testes de integração aprovados**, sem vulnerabilidades de produção reportadas pela auditoria executada nesta entrega. O resultado da auditoria descreve a base conhecida naquela execução e deve ser reavaliado ao atualizar dependências.
 
 | Teste                  | Evidências cobertas                                                                                                                                                                 |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -25,7 +25,9 @@ Resultado registrado: **8 testes de integração aprovados**, sem vulnerabilidad
 | Persistência           | Banco inicia vazio e preserva contas/catálogos entre reinicializações                                                                                                               |
 | Escritas protegidas    | Propriedade, permissões de visitante e expiração de sessão                                                                                                                          |
 
-A suíte usa o servidor HTTP real e SQLite; não substitui as regras por mocks. O CI executa instalação, testes e build em pushes e pull requests com Node 24. Ele não implanta em produção e não precisa de segredos de servidor.
+A suíte usa o servidor HTTP real e SQLite; não substitui as regras por mocks. A CLI administrativa também é executada em teste através de um symlink de release, como em produção.
+
+O CI executa instalação, testes e build em pushes e pull requests com Node 24. Ele não implanta em produção e não precisa de segredos de servidor.
 
 ## Verificação manual da interface
 
