@@ -207,6 +207,7 @@ export function metadata(db, full = true) {
 }
 const eventTextFields = [
   "name",
+  "publicDescription",
   "date",
   "startTime",
   "endTime",
@@ -236,11 +237,13 @@ export function normalizeEvent(
       field,
       ["justification", "objective", "notes"].includes(field)
         ? 5000
-        : field === "name"
-          ? 200
-          : field === "audienceSemester"
-            ? 40
-            : 500,
+        : field === "publicDescription"
+          ? 2000
+          : field === "name"
+            ? 200
+            : field === "audienceSemester"
+              ? 40
+              : 500,
     );
   for (const [field, table] of [
     ["themeId", "themes"],
@@ -304,7 +307,13 @@ export function normalizeEvent(
   if (complete) {
     for (const field of [
       ...eventTextFields.filter(
-        (x) => !["notes", "audienceSemester", "organizer"].includes(x),
+        (x) =>
+          ![
+            "notes",
+            "audienceSemester",
+            "organizer",
+            "publicDescription",
+          ].includes(x),
       ),
       ...(requireOrganizer ? ["organizer"] : []),
       "themeId",

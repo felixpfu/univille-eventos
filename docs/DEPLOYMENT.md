@@ -156,7 +156,11 @@ Na primeira inicialização desta versão, a migração SQLite adiciona `organiz
 
 A atualização do cadastro adiciona `users.companyName` e `users.cnpj` em transação, com valores vazios para contas existentes, e eleva `PRAGMA user_version` para `3`. Não substitui registros, hashes de senha, sessões, pedidos, catálogos, auditoria ou preferências. A execução repetida preserva os dados já preenchidos. Contas legadas seguem autenticando sem empresa/CNPJ; novos solicitantes e alterações de perfil para solicitante exigem ambos. O backup consistente anterior à atualização continua obrigatório. A aceitação pós-publicação deve conferir a versão do esquema e a preservação de contas e eventos, sem copiar dados privados para o repositório ou logs.
 
-Não há carga de eventos de exemplo ou substituição da base. Realização de registros antigos fica vazia até o preenchimento; o PPTX usa “—” quando ausente. A criação e o reenvio passam a exigir o campo. O esquema de notificações adiciona tabelas próprias sem apagar dados existentes.
+### Migração v4
+
+A descrição pública adiciona `events.publicDescription` como texto não nulo com valor vazio e eleva `PRAGMA user_version` para `4`. A migração é aditiva, transacional e idempotente; preserva contas, eventos, sessões, catálogos, fila e auditoria. Objetivo, justificativa e observações internas não são copiados para o novo campo. A aceitação deve conferir a descrição e o público de um evento aprovado sem expor campos internos, além da preservação dos registros anteriores e da versão do esquema.
+
+Não há carga automática de eventos de exemplo ou substituição da base pelas migrações. Realização de registros antigos fica vazia até o preenchimento; o PPTX usa “—” quando ausente. A criação e o reenvio passam a exigir o campo. O esquema de notificações adiciona tabelas próprias sem apagar dados existentes.
 
 A reversão automática não restaura o banco, para não apagar solicitações criadas após a atualização. Uma restauração de dados exige avaliação do snapshot e das gravações posteriores, com serviço web, timer e worker parados. Antes de voltar a uma release anterior à migração v2, confirme sua compatibilidade com o esquema atual e com a regra de prioridade; não presuma que todo código antigo aplica as regras novas. Após restaurar o código, reative o timer somente se o SMTP estiver configurado e validado.
 

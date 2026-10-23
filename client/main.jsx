@@ -83,6 +83,7 @@ const blank = () => ({
   audienceSemester: "",
   justification: "",
   objective: "",
+  publicDescription: "",
   ceremony: null,
   registration: null,
   certificates: null,
@@ -550,7 +551,8 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
     [roomId, setRoomId] = useState(""),
     [courseId, setCourseId] = useState(""),
     [filters, setFilters] = useState(false),
-    [day, setDay] = useState("");
+    [day, setDay] = useState(""),
+    [eventDetails, setEventDetails] = useState(null);
   const date = new Date(now[0], now[1] - 1 + monthOffset, 1),
     month = date.getMonth(),
     year = date.getFullYear(),
@@ -561,7 +563,18 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
       (!roomId || e.roomId === roomId) &&
       (!courseId || e.courseId === courseId) &&
       (!search ||
-        [e.name, e.speaker, e.themeName, e.roomName, e.courseName, e.organizer]
+        [
+          e.name,
+          e.speaker,
+          e.themeName,
+          e.roomName,
+          e.courseName,
+          e.organizer,
+          e.publicDescription,
+          e.audience,
+          e.audienceCourseName,
+          e.audienceSemester,
+        ]
           .join(" ")
           .toLocaleLowerCase("pt-BR")
           .includes(search.toLocaleLowerCase("pt-BR"))),
@@ -792,7 +805,11 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
         ) : visible.length ? (
           <div className="event-list">
             {visible.map((event) => (
-              <EventRow key={event.id} event={event} />
+              <EventRow
+                key={event.id}
+                event={event}
+                onDetails={() => setEventDetails(event)}
+              />
             ))}
           </div>
         ) : (
@@ -831,6 +848,12 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
           Preferências de e-mail <ArrowRight size={15} />
         </button>
       </div>
+      {eventDetails && (
+        <PublicEventModal
+          event={eventDetails}
+          onClose={() => setEventDetails(null)}
+        />
+      )}
     </>
   );
 }
@@ -897,7 +920,15 @@ function Calendar({ month, year, events, day, setDay }) {
   );
 }
 
-function EventRow({ event: e }) {
+function publicParticipation(event) {
+  const semester = /^\d+$/.test(event.audienceSemester || "")
+    ? `${event.audienceSemester}º semestre`
+    : event.audienceSemester;
+  return [event.audienceCourseName, semester].filter(Boolean).join(" · ");
+}
+
+function EventRow({ event: e, onDetails }) {
+  const participation = publicParticipation(e) || e.audience;
   return (
     <article className="event-row">
       <div className="event-date">
@@ -907,10 +938,15 @@ function EventRow({ event: e }) {
       <div className="event-info">
         <span className="event-theme">{e.themeName}</span>
         <h3>{e.name}</h3>
-        <p>
-          <UserRound size={13} />
-          {e.speaker}
-        </p>
+        {e.publicDescription && (
+          <p className="event-description-preview">{e.publicDescription}</p>
+        )}
+        {participation && (
+          <p className="event-audience">
+            <Users size={15} />
+            <span>{participation}</span>
+          </p>
+        )}
       </div>
       <div className="event-meta">
         <span>
@@ -922,10 +958,98 @@ function EventRow({ event: e }) {
           {e.roomName}
         </span>
       </div>
-      <span className="public-badge">
-        <span className="tiny-dot" /> Confirmado
-      </span>
+      <div className="event-row-actions">
+        <span className="public-badge">
+          <span className="tiny-dot" /> Confirmado
+        </span>
+        <button
+          className="text-button event-details-button"
+          onClick={onDetails}
+          aria-label={`Ver detalhes de ${e.name}`}
+        >
+          Ver detalhes <ArrowUpRight size={17} />
+        </button>
+      </div>
     </article>
+  );
+}
+
+function PublicEventModal({ event, onClose }) {
+  const participation = publicParticipation(event);
+  return (
+    <Modal title={event.name} onClose={onClose} wide>
+      <div className="public-event-detail">
+        <div className="public-event-status">
+          {event.themeName && (
+            <span className="event-theme">{event.themeName}</span>
+          )}
+          <span className="public-badge">
+            <span className="tiny-dot" /> Confirmado
+          </span>
+        </div>
+        <dl className="public-event-facts">
+          <div>
+            <dt>
+              <CalendarDays size={18} /> Data
+            </dt>
+            <dd>{dateFormat(event.date)}</dd>
+          </div>
+          <div>
+            <dt>
+              <Clock3 size={18} /> Horário
+            </dt>
+            <dd>
+              {event.startTime} – {event.endTime}
+            </dd>
+          </div>
+          <div>
+            <dt>
+              <MapPin size={18} /> Local
+            </dt>
+            <dd>{event.roomName || "A informar"}</dd>
+          </div>
+          {event.speaker && (
+            <div>
+              <dt>
+                <UserRound size={18} /> Palestrante / ministrante
+              </dt>
+              <dd>{event.speaker}</dd>
+            </div>
+          )}
+        </dl>
+        <section className="public-event-section">
+          <h3>Sobre o evento</h3>
+          <p>
+            {event.publicDescription ||
+              "A descrição deste evento ainda não foi informada."}
+          </p>
+        </section>
+        <section className="public-event-section public-event-participation">
+          <h3>
+            <Users size={20} /> Quem participa
+          </h3>
+          {participation && (
+            <p className="participation-course">{participation}</p>
+          )}
+          {event.audience && <p>{event.audience}</p>}
+          {!participation && !event.audience && (
+            <p>O público participante ainda não foi informado.</p>
+          )}
+        </section>
+        {(event.organizer || event.courseName) && (
+          <section className="public-event-section">
+            <h3>Realização</h3>
+            <p>{event.organizer || event.courseName}</p>
+            {event.organizer && event.courseName && (
+              <p className="public-event-coordination">{event.courseName}</p>
+            )}
+          </section>
+        )}
+        <p className="public-event-timezone">
+          Os horários seguem o fuso de Brasília.
+        </p>
+      </div>
+    </Modal>
   );
 }
 function Spaces({ metadata, onRequest }) {
@@ -1504,6 +1628,7 @@ function RequestModal({
           maxLength={5000}
           rows={3}
           aria-invalid={!!fields[name]}
+          {...extra}
         />
       ) : (
         <input
@@ -1643,6 +1768,23 @@ function RequestModal({
           </div>
           <div className="form-grid">
             <div className="span-2">{field("name", "Nome do evento *")}</div>
+            <div className="span-2">
+              {field(
+                "publicDescription",
+                "Descrição pública (opcional)",
+                "textarea",
+                null,
+                {
+                  maxLength: 2000,
+                  "aria-describedby": "public-description-help",
+                },
+              )}
+              <p className="field-help" id="public-description-help">
+                Será exibida aos visitantes quando o evento for aprovado. Conte
+                o que vai acontecer e evite dados pessoais. Até 2.000
+                caracteres.
+              </p>
+            </div>
             {field("themeId", "Tema *", "text", metadata.themes)}
             {field("date", "Data *", "date", null, { min: today() })}
             {field("startTime", "Horário de início *", "time")}
@@ -1693,13 +1835,18 @@ function RequestModal({
             )}
             {field(
               "audienceSemester",
-              "Semestre do público (opcional)",
+              "Semestres do público (opcional)",
               "text",
-              Array.from({ length: 12 }, (_, i) => ({
-                id: String(i + 1),
-                name: `${i + 1}º semestre`,
-              })),
+              null,
+              {
+                maxLength: 40,
+                placeholder: "Ex.: 1º, 3º e 5º semestres",
+              },
             )}
+            <p className="field-help span-2">
+              O público-alvo, o curso e os semestres serão exibidos na agenda
+              pública após a aprovação.
+            </p>
             <div className="span-2">
               {field("objective", "Objetivo do evento *", "textarea")}
             </div>

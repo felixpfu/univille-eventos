@@ -64,7 +64,25 @@ export function openDatabase(path = databasePath()) {
   `);
   migrateEventQueue(db);
   migrateCompanyDetails(db);
+  migratePublicDescription(db);
   return db;
+}
+
+function migratePublicDescription(db) {
+  if (db.prepare("PRAGMA user_version").get().user_version >= 4) return;
+  transaction(db, () => {
+    const exists = db
+      .prepare("PRAGMA table_info(events)")
+      .all()
+      .some((row) => row.name === "publicDescription");
+    // Internal objectives and justifications were never collected for public
+    // display. Existing events stay blank until an explicit description is saved.
+    if (!exists)
+      db.exec(
+        "ALTER TABLE events ADD COLUMN publicDescription TEXT NOT NULL DEFAULT ''",
+      );
+    db.exec("PRAGMA user_version = 4");
+  });
 }
 
 function migrateCompanyDetails(db) {

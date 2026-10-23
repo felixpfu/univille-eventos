@@ -1,0 +1,90 @@
+[
+  {
+    "key": "prototipos-digitais",
+    "name": "Oficina de protótipos digitais",
+    "date": "2026-10-26",
+    "startTime": "08:00",
+    "endTime": "10:00",
+    "room": "Laboratório",
+    "course": "Engenharia de Software",
+    "semesters": "1º, 3º e 5º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Engenharia de Software do 1º, 3º e 5º semestres. A oficina apresenta um desafio de criação de protótipos de aplicativos, com pesquisa de necessidades, desenho de telas e apresentação das soluções."
+  },
+  {
+    "key": "empreendedorismo-criativo",
+    "name": "Laboratório de empreendedorismo criativo",
+    "date": "2026-10-27",
+    "startTime": "14:00",
+    "endTime": "16:00",
+    "room": "Sala multiuso",
+    "course": "Administração",
+    "semesters": "2º e 4º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Administração do 2º e 4º semestres. Os grupos simulam a criação de um pequeno negócio, definindo proposta de valor, público e um plano inicial de operação."
+  },
+  {
+    "key": "cidadania-digital",
+    "name": "Roda de conversa sobre cidadania digital",
+    "date": "2026-10-28",
+    "startTime": "19:00",
+    "endTime": "21:00",
+    "room": "Auditório",
+    "course": "Direito",
+    "semesters": "4º e 6º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Direito do 4º e 6º semestres. A conversa utiliza casos inventados para discutir direitos no ambiente digital, privacidade e o exercício responsável da cidadania."
+  },
+  {
+    "key": "escuta-acolhimento",
+    "name": "Vivência de escuta e acolhimento",
+    "date": "2026-10-29",
+    "startTime": "09:00",
+    "endTime": "11:00",
+    "room": "Sala multiuso",
+    "course": "Psicologia",
+    "semesters": "3º e 5º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Psicologia do 3º e 5º semestres. A atividade propõe exercícios educativos de comunicação e escuta em situações simuladas, seguidos de discussão em grupo, sem atendimento clínico."
+  },
+  {
+    "key": "financas-na-pratica",
+    "name": "Finanças na prática: orçamento simulado",
+    "date": "2026-10-30",
+    "startTime": "15:00",
+    "endTime": "17:00",
+    "room": "Laboratório",
+    "course": "Ciências Contábeis",
+    "semesters": "2º e 6º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Ciências Contábeis do 2º e 6º semestres. A oficina usa receitas e despesas inventadas para construir um orçamento, identificar custos e apresentar indicadores em uma planilha."
+  },
+  {
+    "key": "processos-sustentaveis",
+    "name": "Desafio de processos sustentáveis",
+    "date": "2026-11-03",
+    "startTime": "18:30",
+    "endTime": "20:30",
+    "room": "Auditório",
+    "course": "Engenharia de Produção",
+    "semesters": "4º e 8º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Engenharia de Produção do 4º e 8º semestres. As equipes analisam uma linha de produção simulada e propõem melhorias para reduzir desperdícios, organizar etapas e acompanhar resultados."
+  },
+  {
+    "key": "qualidade-software",
+    "name": "Encontro sobre qualidade de software",
+    "date": "2026-11-10",
+    "startTime": "10:00",
+    "endTime": "12:00",
+    "room": "Laboratório",
+    "course": "Engenharia de Software",
+    "semesters": "5º e 7º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Engenharia de Software do 5º e 7º semestres. O encontro apresenta exemplos de testes automatizados, revisão de código e acessibilidade em um projeto de aplicativo inteiramente simulado."
+  },
+  {
+    "key": "planejamento-equipes",
+    "name": "Seminário de planejamento e equipes",
+    "date": "2026-12-02",
+    "startTime": "19:00",
+    "endTime": "21:00",
+    "room": "Auditório",
+    "course": "Administração",
+    "semesters": "6º e 8º semestres",
+    "description": "Evento fictício de demonstração para estudantes de Administração do 6º e 8º semestres. O seminário reúne apresentações simuladas sobre definição de metas, distribuição de tarefas e acompanhamento de projetos em equipe."
+  }
+]

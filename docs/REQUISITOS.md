@@ -24,7 +24,7 @@ Nome da empresa e CNPJ são dados da conta: aparecem somente nas respostas auten
 
 A agenda contém exclusivamente aprovados do **mês atual e dos dois seguintes**, no fuso `America/Sao_Paulo`, em ordem cronológica. Não é uma janela móvel de 90 dias. Calendário é a visualização inicial, com aba alternativa em lista, busca e filtros por setor/curso, tema e ambiente. A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro opcional e layout responsivo.
 
-A resposta pública apresenta nome, tema, data, início/fim, local, palestrante, setor/curso e realização. Não expõe rascunhos, pendentes, rejeitados, cancelados, autor, solicitante livre, centro de custo, justificativas ou observações internas. O catálogo público de setores/cursos contém somente identificador e nome.
+A resposta pública apresenta nome, descrição pública, tema, data, início/fim, local, palestrante, setor/curso, realização e público-alvo com seu curso e semestre. A descrição pública é um campo explícito e opcional de até 2.000 caracteres, distinto do objetivo interno. Eventos existentes ficam com esse campo vazio até o preenchimento. A agenda não expõe rascunhos, pendentes, rejeitados, cancelados, autor, solicitante livre, centro de custo, objetivo, justificativas ou observações internas. O catálogo público de setores/cursos contém somente identificador e nome.
 
 ## Campos da solicitação
 
@@ -33,7 +33,7 @@ A resposta pública apresenta nome, tema, data, início/fim, local, palestrante,
 | Obrigatórios no envio          | Nome, tema, data, início, fim, ambiente, setor/curso, solicitante em texto livre, palestrante, público-alvo, **Realização**, justificativa e objetivo |
 | Respostas obrigatórias Sim/Não | Cerimonial, haverá inscrições, necessidade de declarações                                                                                             |
 | Automático                     | Centro de custo derivado do setor/curso                                                                                                               |
-| Opcionais                      | Curso e semestre do público-alvo, recursos e observações                                                                                              |
+| Opcionais                      | Descrição pública, curso e semestre do público-alvo, recursos e observações                                                                           |
 
 **Realização** é a entidade organizadora e não é inferida de outro campo. O curso do público é um vínculo separado do setor/curso responsável pelo pedido; o semestre é texto opcional com até 40 caracteres. Nos filtros e cadastros, “setor/curso” representa o cadastro existente de cursos/coordenações, sem entidade adicional de setor.
 

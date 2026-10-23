@@ -1230,7 +1230,7 @@ test("Version 1 migration preserves requests and reconstructs last actual send o
     audit.run("request.submitted", "resent", "2026-10-21T10:00:00.000Z");
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
     const rows = db
       .prepare(
         "SELECT id,name,submittedAt,queueSequence,organizer FROM events ORDER BY queueSequence",
@@ -1528,7 +1528,7 @@ test("Version 2 company migration is additive, preserves existing data and allow
     db.close();
     const app = createApp({ dbPath, now: fixedNow });
     db = app.locals.db;
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
     const migrated = db
       .prepare("SELECT * FROM users WHERE id='legacy-owner'")
       .get();
@@ -1564,11 +1564,220 @@ test("Version 2 company migration is additive, preserves existing data and allow
     const saved = db.prepare("SELECT * FROM users").all();
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
     assert.deepEqual(db.prepare("SELECT * FROM users").all(), saved);
     assert.equal(db.prepare("SELECT count(*) AS n FROM events").get().n, 1);
   } finally {
     if (server) await new Promise((resolve) => server.close(resolve));
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Public descriptions and audience details persist explicitly while the agenda excludes private fields and unpublished states", async () => {
+  const f = await fixture();
+  let restarted;
+  let restartedServer;
+  try {
+    const c = await catalog(f);
+    const user = await register(f);
+    for (const publicDescription of [42, {}, [], "x".repeat(2001)]) {
+      const invalid = await f.request("/requests", {
+        method: "POST",
+        cookie: user.cookie,
+        body: eventData(c, { publicDescription }),
+      });
+      assert.equal(invalid.status, 400);
+    }
+    let event = await draft(
+      f,
+      user.cookie,
+      eventData(c, {
+        publicDescription: "x".repeat(2000),
+        audience: "Estudantes do 3º e 4º semestres",
+        audienceCourseId: c.course.id,
+        audienceSemester: "3º e 4º",
+        objective: "Objetivo interno reservado",
+        justification: "Justificativa interna reservada",
+        notes: "Observação interna reservada",
+      }),
+    );
+    assert.equal(event.publicDescription.length, 2000);
+    const description = "Oficina fictícia sobre projetos e colaboração.";
+    const changed = await f.request(`/requests/${event.id}`, {
+      method: "PUT",
+      cookie: user.cookie,
+      body: {
+        version: event.version,
+        publicDescription: `  ${description}  `,
+      },
+    });
+    assert.equal(changed.status, 200);
+    event = changed.data.request;
+    assert.equal(event.publicDescription, description);
+    assert.equal(event.objective, "Objetivo interno reservado");
+    event = await approve(f, await submit(f, user.cookie, event));
+    assert.equal(
+      (await f.request(`/requests/${event.id}`, { cookie: user.cookie })).data
+        .request.publicDescription,
+      description,
+    );
+    // Description remains optional for existing and new requests.
+    const blank = await approve(
+      f,
+      await submit(
+        f,
+        user.cookie,
+        await draft(f, user.cookie, eventData(c, { date: "2026-10-25" })),
+      ),
+    );
+    assert.equal(blank.publicDescription, "");
+    for (const [index, status] of [
+      "draft",
+      "pending",
+      "rejected",
+      "cancelled",
+    ].entries()) {
+      let hidden = await draft(
+        f,
+        user.cookie,
+        eventData(c, {
+          date: `2026-10-${26 + index}`,
+          publicDescription: `Descrição ainda não pública: ${status}`,
+        }),
+      );
+      if (status !== "draft") hidden = await submit(f, user.cookie, hidden);
+      if (status === "rejected") {
+        const rejected = await f.request(
+          `/admin/requests/${hidden.id}/reject`,
+          {
+            method: "POST",
+            cookie: f.admin,
+            body: { version: hidden.version, reason: "Revisão fictícia" },
+          },
+        );
+        assert.equal(rejected.status, 200);
+      }
+      if (status === "cancelled") {
+        const cancelled = await f.request(`/requests/${hidden.id}/cancel`, {
+          method: "POST",
+          cookie: user.cookie,
+          body: { version: hidden.version },
+        });
+        assert.equal(cancelled.status, 200);
+      }
+    }
+    const publicEvents = (await f.request("/events")).data.events;
+    assert.deepEqual(
+      publicEvents.map((row) => row.id),
+      [event.id, blank.id],
+    );
+    const published = publicEvents[0];
+    assert.equal(published.publicDescription, description);
+    assert.equal(published.audience, "Estudantes do 3º e 4º semestres");
+    assert.equal(published.audienceCourseId, c.course.id);
+    assert.equal(published.audienceCourseName, c.course.name);
+    assert.equal(published.audienceSemester, "3º e 4º");
+    assert.deepEqual(Object.keys(published).sort(), [
+      "audience",
+      "audienceCourseId",
+      "audienceCourseName",
+      "audienceSemester",
+      "courseId",
+      "courseName",
+      "date",
+      "endTime",
+      "id",
+      "name",
+      "organizer",
+      "publicDescription",
+      "roomId",
+      "roomName",
+      "speaker",
+      "startTime",
+      "themeId",
+      "themeName",
+    ]);
+    const output = JSON.stringify(publicEvents);
+    for (const privateValue of [
+      "Objetivo interno reservado",
+      "Justificativa interna reservada",
+      "Observação interna reservada",
+      "Nome informado livremente",
+      "Empresa fictícia de testes",
+      "12345678000195",
+      "Descrição ainda não pública",
+    ])
+      assert.ok(!output.includes(privateValue), privateValue);
+
+    // Restart the application against the persisted file, without copying data.
+    restarted = createApp({ dbPath: f.dbPath, now: fixedNow });
+    restartedServer = restarted.listen(0, "127.0.0.1");
+    await once(restartedServer, "listening");
+    const response = await fetch(
+      `http://127.0.0.1:${restartedServer.address().port}/api/events`,
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).events, publicEvents);
+  } finally {
+    if (restartedServer)
+      await new Promise((resolve) => restartedServer.close(resolve));
+    restarted?.locals.db.close();
+    await f.close();
+  }
+});
+
+test("Version 3 description migration preserves all records, leaves internal text private and is idempotent", () => {
+  const directory = mkdtempSync(
+    join(tmpdir(), "univille-description-migration-"),
+  );
+  const dbPath = join(directory, "events.sqlite");
+  let db = openDatabase(dbPath);
+  try {
+    db.exec(`INSERT INTO users(id,name,email,passwordHash,role,companyName,cnpj,createdAt)
+      VALUES ('legacy-owner','Pessoa antiga','legacy-description@example.test','preserved-hash','requester','Empresa preservada','12345678000195','2026-10-22T10:00:00.000Z');
+      INSERT INTO events(id,authorId,name,status,objective,justification,notes,createdAt,updatedAt)
+      VALUES ('legacy-event','legacy-owner','Evento preservado','approved','Objetivo reservado','Justificativa reservada','Observações reservadas','2026-10-22T10:00:00.000Z','2026-10-22T10:00:00.000Z');
+      INSERT INTO sessions(tokenHash,userId,expiresAt) VALUES ('preserved-session','legacy-owner',9999999999999);
+      INSERT INTO themes(id,name) VALUES ('legacy-theme','Tema preservado');
+      INSERT INTO auditLog(actorId,action,entityId,createdAt) VALUES ('legacy-owner','request.created','legacy-event','2026-10-22T10:00:00.000Z');
+      ALTER TABLE events DROP COLUMN publicDescription;
+      PRAGMA user_version=3;`);
+    const tables = [
+      "users",
+      "events",
+      "sessions",
+      "themes",
+      "auditLog",
+      "submissionQueue",
+    ];
+    const snapshot = Object.fromEntries(
+      tables.map((table) => [
+        table,
+        db.prepare(`SELECT * FROM ${table}`).all(),
+      ]),
+    );
+    db.close();
+    db = openDatabase(dbPath);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    for (const table of tables) {
+      const rows = db.prepare(`SELECT * FROM ${table}`).all();
+      if (table === "events") {
+        assert.equal(rows[0].publicDescription, "");
+        const { publicDescription, ...legacyEvent } = rows[0];
+        assert.deepEqual(legacyEvent, { ...snapshot.events[0] });
+      } else assert.deepEqual(rows, snapshot[table]);
+    }
+    db.prepare(
+      "UPDATE events SET publicDescription='Descrição autorizada explicitamente' WHERE id='legacy-event'",
+    ).run();
+    const saved = db.prepare("SELECT * FROM events").all();
+    db.close();
+    db = openDatabase(dbPath);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.deepEqual(db.prepare("SELECT * FROM events").all(), saved);
+    assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
+  } finally {
     db.close();
     rmSync(directory, { recursive: true, force: true });
   }

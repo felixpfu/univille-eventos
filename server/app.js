@@ -347,6 +347,7 @@ export function createApp(options = {}) {
     const events = eventList(db, where.join(" AND "), params).map((event) => ({
       id: event.id,
       name: event.name,
+      publicDescription: event.publicDescription,
       themeId: event.themeId,
       themeName: event.themeName,
       date: event.date,
@@ -358,6 +359,10 @@ export function createApp(options = {}) {
       courseId: event.courseId,
       courseName: event.courseName,
       organizer: event.organizer,
+      audience: event.audience,
+      audienceCourseId: event.audienceCourseId,
+      audienceCourseName: event.audienceCourseName,
+      audienceSemester: event.audienceSemester,
     }));
     res.json({ events });
   });

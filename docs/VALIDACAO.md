@@ -12,7 +12,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão funcional da v1.2.0 registrou **28 testes aprovados**: 16 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
+A revisão funcional da v1.3.0 registrou **30 testes aprovados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
 
 | Grupo                     | Evidências                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -36,6 +36,8 @@ A revisão no navegador usou janelas de **1440 × 1000** e **390 × 844**, sem r
 
 Na v1.2.0, foram conferidos os dois fluxos de cadastro, a recusa de CNPJ inválido e sua correção sem duplicar a conta, e a consulta administrativa de empresa/CNPJ. A revisão visual usou 1440 × 1000, 390 × 844 e 320 × 844. Na comparação entre claro/escuro, 52 elementos do cabeçalho/calendário em desktop mantiveram as mesmas medidas e posições; o cabeçalho e os elementos comparados em celular e administração também permaneceram alinhados. Não houve rolagem horizontal da página nos cenários conferidos. A tipografia usa corpo e campos de 16 px ou mais, controles de 14–16 px e auxiliares de no mínimo 12 px.
 
+Na v1.3.0, foram conferidos os oito eventos fictícios com manhã/tarde/noite e suas descrições, cursos e vários semestres. A carga via API aprovou oito pedidos; uma segunda execução ignorou os oito sem criar duplicações. A revisão em desktop e celular conferiu lista, calendário e diálogo de detalhes com descrição e participantes. O teste de backend verifica que apenas aprovados são públicos e que objetivo, justificativa, observações e dados de conta não vazam. A migração v4 preserva registros sem preencher descrições a partir de textos internos.
+
 O roteiro deve ser repetido após mudanças visuais ou de fluxo. Essas verificações pontuais não constituem uma suíte permanente de navegador nem uma avaliação completa em todos os dispositivos.
 
 A apresentação foi reconstruída a partir da fotografia. Na revisão de 23/10/2026, apresentações fictícias com seis eventos, período vazio e campo longo foram renderizadas com LibreOffice e todos os slides foram inspecionados. Foram conferidos cabeçalho, tabela, rodapé, legibilidade e continuação. Isso não prova identidade exata com o PPTX original, que não foi fornecido. Detalhes em [PPTX.md](PPTX.md).
@@ -44,7 +46,7 @@ A apresentação foi reconstruída a partir da fotografia. Na revisão de 23/10/
 
 O pacote de release executa testes e build antes da transferência. O instalador usa dependências de produção pelo lockfile, mantém os dados fora das releases e verifica `/api/health` e a página em localhost. Com `--publish`, também verifica ambos pelo HTTPS e hostname reais. O registro da publicação deve identificar o commit/release efetivamente ativo e o resultado das verificações, sem credenciais.
 
-Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. As migrações v2 e v3 são aditivas; cópia de base de desenvolvimento não integra a publicação. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
+Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. As migrações v2, v3 e v4 são aditivas; cópia de base de desenvolvimento não integra a publicação. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Roteiro de aceite
 
@@ -78,4 +80,4 @@ O cenário é isolado, sem a rede pública, Nginx ou o hardware de produção. O
 
 Testes funcionais e medições locais não são auditoria independente de segurança, teste amplo de carga ou certificação de acessibilidade. A referência de 20 ms não é um SLA implementado; latência varia com volume, concorrência, rede, servidor e dispositivo e precisa ser medida nessas condições.
 
-Não foi validada entrega SMTP real, pois o provedor ainda não foi configurado. Login institucional, recuperação automática de senha por e-mail, participantes e emissão de certificados permanecem fora do escopo implementado. O sistema inicializa sem dados de demonstração; a equipe deve cadastrar os catálogos antes do primeiro pedido.
+Não foi validada entrega SMTP real, pois o provedor ainda não foi configurado. Login institucional, recuperação automática de senha por e-mail, participantes e emissão de certificados permanecem fora do escopo implementado. O sistema inicializa sem dados de demonstração. A carga dos oito exemplos fictícios depende da execução explícita do operador, conforme [DEMONSTRACAO.md](DEMONSTRACAO.md); não é executada por migração, build ou testes.
