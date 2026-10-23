@@ -388,6 +388,8 @@ function Catalog({ api, metadata, onMetadata, notify }) {
       description: row?.description || "",
       costCenterId: row?.costCenterId || "",
       resourceIds: row?.resourceIds || [],
+      capacity: row?.capacity == null ? "" : String(row.capacity),
+      imageKey: row?.imageKey || "",
     });
     setError("");
   }
@@ -408,7 +410,11 @@ function Catalog({ api, metadata, onMetadata, notify }) {
         description: form.description.trim(),
       };
       if (entity === "courses") body.costCenterId = form.costCenterId;
-      if (entity === "rooms") body.resourceIds = form.resourceIds;
+      if (entity === "rooms") {
+        body.resourceIds = form.resourceIds;
+        body.capacity = form.capacity === "" ? null : Number(form.capacity);
+        body.imageKey = form.imageKey;
+      }
       await api(`/admin/catalog/${entity}${editing ? `/${editing.id}` : ""}`, {
         method: editing ? "PUT" : "POST",
         body,
@@ -490,6 +496,13 @@ function Catalog({ api, metadata, onMetadata, notify }) {
                     {metadata.costCenters?.find((center) =>
                       sameId(center.id, row.costCenterId),
                     )?.name || "Não informado"}
+                  </p>
+                )}
+                {entity === "rooms" && (
+                  <p className="muted">
+                    {row.capacity
+                      ? `Capacidade máxima: ${row.capacity} pessoas`
+                      : "Capacidade não informada"}
                   </p>
                 )}
                 {entity === "rooms" && (
@@ -590,6 +603,45 @@ function Catalog({ api, metadata, onMetadata, notify }) {
                   </small>
                 )}
               </label>
+            )}
+            {entity === "rooms" && (
+              <>
+                <label className="field">
+                  <span>Capacidade máxima (pessoas)</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100000"
+                    step="1"
+                    value={form.capacity}
+                    onChange={(event) =>
+                      setForm({ ...form, capacity: event.target.value })
+                    }
+                  />
+                  <small className="muted">
+                    Deixe em branco enquanto a lotação não estiver confirmada.
+                  </small>
+                </label>
+                <label className="field">
+                  <span>Imagem do espaço</span>
+                  <select
+                    value={form.imageKey}
+                    onChange={(event) =>
+                      setForm({ ...form, imageKey: event.target.value })
+                    }
+                  >
+                    <option value="">Automática (ilustrativa)</option>
+                    {metadata.roomImages?.map((image) => (
+                      <option key={image.key} value={image.key}>
+                        {image.label}
+                      </option>
+                    ))}
+                  </select>
+                  <small className="muted">
+                    Fotos e ilustrações são identificadas na página Espaços.
+                  </small>
+                </label>
+              </>
             )}
             {entity === "rooms" && (
               <fieldset className="field">

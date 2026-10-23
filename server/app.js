@@ -6,6 +6,7 @@ import { existsSync } from "node:fs";
 import { openDatabase, transaction } from "./db.js";
 import { generateAgendaPptx } from "./presentation.js";
 import { generateAgendaPdf } from "./pdf.js";
+import { isRoomImageKey } from "./room-media.js";
 import {
   initNotificationSchema,
   registerNotificationRoutes,
@@ -698,7 +699,32 @@ function installCatalogRoutes(api, db, admin, now) {
         fail(400, "Selecione um centro de custo válido.", "VALIDATION_ERROR");
     }
     let resourceIds;
+    let capacity;
+    let imageKey;
     if (entity === "rooms") {
+      capacity = Object.hasOwn(body, "capacity")
+        ? body.capacity
+        : (existing?.capacity ?? null);
+      if (
+        capacity !== null &&
+        (!Number.isSafeInteger(capacity) || capacity < 1 || capacity > 100000)
+      )
+        fail(
+          400,
+          "A capacidade deve ser um número inteiro entre 1 e 100000 ou nula.",
+          "VALIDATION_ERROR",
+          { capacity: "Informe a capacidade máxima ou deixe o campo vazio." },
+        );
+      imageKey = Object.hasOwn(body, "imageKey")
+        ? body.imageKey
+        : (existing?.imageKey ?? "");
+      if (!isRoomImageKey(imageKey))
+        fail(
+          400,
+          "Selecione uma imagem do catálogo disponível.",
+          "VALIDATION_ERROR",
+          { imageKey: "Selecione uma imagem válida ou nenhuma imagem." },
+        );
       resourceIds = body.resourceIds ?? existing?.resourceIds ?? [];
       if (
         !Array.isArray(resourceIds) ||
@@ -727,21 +753,29 @@ function installCatalogRoutes(api, db, admin, now) {
     }
     if (existing)
       db.prepare(
-        `UPDATE ${entity} SET name=?,description=?${entity === "courses" ? ",costCenterId=?" : ""} WHERE id=?`,
+        `UPDATE ${entity} SET name=?,description=?${entity === "courses" ? ",costCenterId=?" : entity === "rooms" ? ",capacity=?,imageKey=?" : ""} WHERE id=?`,
       ).run(
         name,
         description,
-        ...(entity === "courses" ? [costCenterId] : []),
+        ...(entity === "courses"
+          ? [costCenterId]
+          : entity === "rooms"
+            ? [capacity, imageKey]
+            : []),
         id,
       );
     else
       db.prepare(
-        `INSERT INTO ${entity}(id,name,description${entity === "courses" ? ",costCenterId" : ""}) VALUES (?,?,?${entity === "courses" ? ",?" : ""})`,
+        `INSERT INTO ${entity}(id,name,description${entity === "courses" ? ",costCenterId" : entity === "rooms" ? ",capacity,imageKey" : ""}) VALUES (?,?,?${entity === "courses" ? ",?" : entity === "rooms" ? ",?,?" : ""})`,
       ).run(
         id,
         name,
         description,
-        ...(entity === "courses" ? [costCenterId] : []),
+        ...(entity === "courses"
+          ? [costCenterId]
+          : entity === "rooms"
+            ? [capacity, imageKey]
+            : []),
       );
     if (entity === "rooms") {
       db.prepare("DELETE FROM roomResources WHERE roomId=?").run(id);

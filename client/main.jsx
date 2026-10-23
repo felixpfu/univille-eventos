@@ -210,12 +210,16 @@ function App() {
   const [user, setUser] = useState(null),
     [ready, setReady] = useState(false),
     [page, setPage] = useState("agenda"),
+    [agendaRoom, setAgendaRoom] = useState(""),
+    [requestRoomId, setRequestRoomId] = useState(""),
+    [pendingRoomRequest, setPendingRoomRequest] = useState(""),
     [metadata, setMetadata] = useState({
       themes: [],
       rooms: [],
       resources: [],
       courses: [],
       costCenters: [],
+      roomImages: [],
     }),
     [events, setEvents] = useState([]),
     [eventsMonth, setEventsMonth] = useState(""),
@@ -296,6 +300,7 @@ function App() {
     refresh();
   }, []);
   const openRequest = (request, callback) => {
+    setRequestRoomId("");
     setSelected(request);
     setAfterSave(() => callback);
     setModal("request");
@@ -308,6 +313,7 @@ function App() {
     setAfterSave(null);
   };
   const navigate = (p) => {
+    if (p === "agenda") setAgendaRoom("");
     setPage(p);
     setSelected(null);
     setModal(null);
@@ -327,7 +333,13 @@ function App() {
     }
   };
   const requester = user && ["requester", "admin"].includes(user.role);
-  const startRequest = () => {
+  const startRequest = (selectedRoom = "") => {
+    const roomId =
+      typeof selectedRoom === "string" &&
+      metadata.rooms.some((room) => room.id === selectedRoom)
+        ? selectedRoom
+        : "";
+    setRequestRoomId(roomId);
     if (requester) {
       setSelected(null);
       setModal("request");
@@ -336,7 +348,16 @@ function App() {
         "Sua conta é de visitante. Solicite à administração a alteração para o perfil solicitante.",
         "error",
       );
-    else setModal("login");
+    else {
+      setPendingRoomRequest(roomId);
+      setModal("login");
+    }
+  };
+  const openRoomAgenda = (roomId) => {
+    setAgendaRoom(roomId);
+    setPage("agenda");
+    setModal(null);
+    setSelected(null);
   };
   return (
     <>
@@ -445,21 +466,29 @@ function App() {
             </div>
           ) : page === "agenda" ? (
             <Agenda
+              key={agendaRoom || "all-spaces"}
+              initialRoomId={agendaRoom}
               events={events}
               eventsMonth={eventsMonth}
               metadata={metadata}
               loading={loading}
               onRequest={startRequest}
+              onBackToSpaces={() => navigate("spaces")}
               onNotifications={() => setModal(user ? "notifications" : "login")}
             />
           ) : page === "spaces" ? (
-            <Spaces metadata={metadata} onRequest={startRequest} />
+            <Spaces
+              metadata={metadata}
+              onRequest={startRequest}
+              onAgenda={openRoomAgenda}
+            />
           ) : page === "requests" && requester ? (
             <MyRequests
               requests={requests}
               onOpen={openRequest}
               onNew={() => {
                 setSelected(null);
+                setRequestRoomId("");
                 setModal("request");
               }}
             />
@@ -485,10 +514,22 @@ function App() {
       </div>
       {modal === "login" && (
         <AuthModal
-          onClose={() => setModal(null)}
+          onClose={() => {
+            setPendingRoomRequest("");
+            setModal(null);
+          }}
           onSuccess={async (nextUser) => {
             setModal(null);
             await refresh();
+            if (
+              pendingRoomRequest &&
+              ["requester", "admin"].includes(nextUser.role)
+            ) {
+              setRequestRoomId(pendingRoomRequest);
+              setPendingRoomRequest("");
+              setSelected(null);
+              setModal("request");
+            } else setPendingRoomRequest("");
             setPage(
               nextUser.role === "admin"
                 ? "admin"
@@ -510,6 +551,7 @@ function App() {
       {modal === "request" && (
         <RequestModal
           request={selected}
+          initialRoomId={requestRoomId}
           metadata={metadata}
           user={user}
           onClose={() => {
@@ -564,13 +606,15 @@ function Agenda({
   onRequest,
   loading,
   onNotifications,
+  initialRoomId = "",
+  onBackToSpaces,
 }) {
   const [anchorMonth] = useState(() => today().slice(0, 7));
   const [monthOffset, setMonthOffset] = useState(0),
-    [view, setView] = useState("calendar"),
+    [view, setView] = useState(initialRoomId ? "list" : "calendar"),
     [search, setSearch] = useState(""),
     [themeId, setThemeId] = useState(""),
-    [roomId, setRoomId] = useState(""),
+    [roomId, setRoomId] = useState(initialRoomId),
     [courseId, setCourseId] = useState(""),
     [filters, setFilters] = useState(false),
     [day, setDay] = useState(""),
@@ -645,22 +689,44 @@ function Agenda({
   );
   const monthEvents = matching.filter((e) => e.date.startsWith(selectedMonth));
   const visible = monthEvents.filter((e) => !day || e.date === day);
-  const hasFilters = search || themeId || roomId || courseId || day;
+  const hasFilters =
+    search || themeId || (!initialRoomId && roomId) || courseId || day;
+  const scopedRoom =
+    initialRoomId && metadata.rooms.find((room) => room.id === roomId);
   return (
     <>
       <div className="page-heading agenda-heading">
         <div>
-          <span className="eyebrow">UNIVILLE · CAMPUS SÃO BENTO DO SUL</span>
-          <h1>Agenda de eventos</h1>
+          <span className="eyebrow">
+            {scopedRoom ? "AGENDA DO ESPAÇO · " : ""}UNIVILLE · CAMPUS SÃO BENTO
+            DO SUL
+          </span>
+          <h1>{scopedRoom ? scopedRoom.name : "Agenda de eventos"}</h1>
           <p>
             Consulte os encontros aprovados e navegue pelos meses.
             <br className="desktop-break" /> Veja os próximos eventos e os que
             já passaram.
           </p>
+          {scopedRoom && (
+            <p className="space-agenda-context">
+              <MapPin size={17} /> Somente eventos de {scopedRoom.name}
+              {scopedRoom.capacity
+                ? ` · Até ${scopedRoom.capacity} pessoas`
+                : ""}
+            </p>
+          )}
         </div>
-        <button className="button primary" onClick={onRequest}>
-          <Plus size={17} /> Solicitar evento
-        </button>
+        <div className="space-agenda-actions">
+          {initialRoomId && (
+            <button className="button" onClick={onBackToSpaces}>
+              <ArrowLeft size={17} /> Todos os espaços
+            </button>
+          )}
+          <button className="button primary" onClick={() => onRequest(roomId)}>
+            <Plus size={17} />{" "}
+            {scopedRoom ? "Solicitar neste espaço" : "Solicitar evento"}
+          </button>
+        </div>
       </div>
       <section
         className="agenda-board"
@@ -829,6 +895,7 @@ function Agenda({
               Local do evento
               <select
                 value={roomId}
+                disabled={Boolean(initialRoomId)}
                 onChange={(e) => setRoomId(e.target.value)}
               >
                 <option value="">Todos os locais</option>
@@ -843,7 +910,7 @@ function Agenda({
               className="text-button"
               onClick={() => {
                 setThemeId("");
-                setRoomId("");
+                setRoomId(initialRoomId);
                 setCourseId("");
                 setSearch("");
                 setDay("");
@@ -926,7 +993,10 @@ function Agenda({
                     : "Escolha outro mês para consultar a agenda."}
                 </p>
                 {!hasFilters && (
-                  <button className="text-button" onClick={onRequest}>
+                  <button
+                    className="text-button"
+                    onClick={() => onRequest(roomId)}
+                  >
                     Propor um evento <ArrowRight size={15} />
                   </button>
                 )}
@@ -1154,7 +1224,15 @@ function PublicEventModal({ event, onClose }) {
     </Modal>
   );
 }
-function Spaces({ metadata, onRequest }) {
+function Spaces({ metadata, onRequest, onAgenda }) {
+  const imageFor = (room) => {
+    const fallback = /audit[oó]rio/i.test(room.name)
+      ? "miniauditorio-ilustrativo"
+      : "sala-ilustrativa";
+    return metadata.roomImages?.find(
+      (image) => image.key === (room.imageKey || fallback),
+    );
+  };
   return (
     <>
       <div className="page-heading compact">
@@ -1168,24 +1246,88 @@ function Spaces({ metadata, onRequest }) {
       </div>
       {metadata.rooms.length ? (
         <div className="card-grid rooms-grid">
-          {metadata.rooms.map((r, i) => (
-            <article className="room-card" key={r.id}>
-              <div className="room-visual">
-                <Building2 size={55} strokeWidth={0.8} />
-                <span>{String(i + 1).padStart(2, "0")}</span>
-              </div>
-              <div className="room-content">
-                <h2>{r.name}</h2>
-                <p>
-                  {r.description ||
-                    "Espaço disponível para eventos acadêmicos."}
-                </p>
-                <button className="text-button" onClick={onRequest}>
-                  Solicitar um evento <ArrowUpRight size={16} />
+          {metadata.rooms.map((r) => {
+            const image = imageFor(r);
+            return (
+              <article className="room-card" key={r.id}>
+                <button
+                  className="room-visual room-photo-button"
+                  aria-label={`Ver agenda de ${r.name}`}
+                  onClick={() => onAgenda(r.id)}
+                >
+                  {image ? (
+                    <img
+                      src={`${BASE}${image.path}`}
+                      alt={image.alt}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <Building2 size={55} strokeWidth={0.8} />
+                  )}
+                  {image && (
+                    <span className="room-photo-label">
+                      {image.kind === "photo"
+                        ? "Foto do espaço"
+                        : "Imagem ilustrativa"}
+                    </span>
+                  )}
                 </button>
-              </div>
-            </article>
-          ))}
+                <div className="room-content">
+                  <h2>
+                    <button
+                      className="room-title-button"
+                      onClick={() => onAgenda(r.id)}
+                    >
+                      {r.name}
+                    </button>
+                  </h2>
+                  <div className="room-capacity">
+                    <Users size={18} />
+                    {r.capacity
+                      ? `Capacidade máxima: ${r.capacity} pessoas`
+                      : "Capacidade não informada"}
+                  </div>
+                  <p>
+                    {r.description ||
+                      "Espaço disponível para eventos acadêmicos."}
+                  </p>
+                  {image && (
+                    <p className="room-image-credit">
+                      {image.credit}
+                      {image.sourceUrl && (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <a
+                            href={image.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Ver fonte
+                          </a>
+                        </>
+                      )}
+                    </p>
+                  )}
+                  <div className="room-card-actions">
+                    <button
+                      className="button primary"
+                      onClick={() => onAgenda(r.id)}
+                    >
+                      Ver agenda deste espaço <ArrowRight size={16} />
+                    </button>
+                    <button
+                      className="text-button"
+                      onClick={() => onRequest(r.id)}
+                    >
+                      Solicitar um evento <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div className="panel empty-state">
@@ -1744,6 +1886,7 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
 }
 function RequestModal({
   request: initialRequest,
+  initialRoomId = "",
   metadata,
   user,
   onClose,
@@ -1754,7 +1897,11 @@ function RequestModal({
   const [data, setData] = useState(() =>
       request
         ? { ...blank(), ...request, resourceIds: request.resourceIds || [] }
-        : { ...blank(), requesterName: user?.name || "" },
+        : {
+            ...blank(),
+            requesterName: user?.name || "",
+            roomId: initialRoomId,
+          },
     ),
     [editApproved, setEditApproved] = useState(false),
     [busy, setBusy] = useState(false),
@@ -2004,6 +2151,12 @@ function RequestModal({
             {field("startTime", "Horário de início *", "time")}
             {field("endTime", "Horário de término *", "time")}
             {field("roomId", "Local do evento *", "text", metadata.rooms)}
+            {room?.capacity && (
+              <p className="field-hint room-request-capacity">
+                <Users size={16} /> Capacidade máxima de {room.name}:{" "}
+                {room.capacity} pessoas.
+              </p>
+            )}
             {field("speaker", "Palestrante *")}
             {field(
               "courseId",

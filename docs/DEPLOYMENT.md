@@ -162,6 +162,14 @@ A atualização do cadastro adiciona `users.companyName` e `users.cnpj` em trans
 
 A descrição pública adiciona `events.publicDescription` como texto não nulo com valor vazio e eleva `PRAGMA user_version` para `4`. A migração é aditiva, transacional e idempotente; preserva contas, eventos, sessões, catálogos, fila e auditoria. Objetivo, justificativa e observações internas não são copiados para o novo campo. A aceitação deve conferir a descrição e o público de um evento aprovado sem expor campos internos, além da preservação dos registros anteriores e da versão do esquema.
 
+### Migração v5
+
+A revisão dos espaços adiciona `rooms.capacity` como inteiro anulável e `rooms.imageKey` como texto não nulo inicialmente vazio, elevando `PRAGMA user_version` para `5`. A capacidade admite `null` ou inteiros de 1 a 100.000. A migração é aditiva, transacional e idempotente: preserva contas, sessões, eventos e suas versões, catálogos, vínculos com recursos, fila e auditoria. Não deduz capacidade ou imagem pelo nome do ambiente e não cadastra espaços numa base vazia.
+
+O responsável informou em 23/10/2026 as capacidades de 300 pessoas para o Auditório e 120 para o Miniauditório. Esses dados e as imagens devem ser configurados explicitamente pela API administrativa ou pelo cadastro de ambientes, com backup consistente anterior, preservando os demais campos e recursos já vinculados. As chaves aceitas vêm de `server/room-media.js`; omitir os novos campos num PUT preserva seus valores, `capacity: null` limpa a capacidade e `imageKey: ""` remove a escolha explícita, permitindo a ilustração automática na interface. URLs arbitrárias e uploads não são aceitos.
+
+O build copia `public/venues/` para `dist/venues/`, incluindo imagens e o registro de origem. Após publicar, confira o esquema 5 e os mesmos identificadores, versões e vínculos anteriores; valide metadados, carregamento local das imagens, créditos, capacidade, agenda filtrada por espaço e formulário com local pré-selecionado, inclusive após login. Essa conferência não exige alterar eventos de produção. Detalhes em [ESPACOS.md](ESPACOS.md).
+
 Não há carga automática de eventos de exemplo ou substituição da base pelas migrações. Realização de registros antigos fica vazia até o preenchimento; o PPTX usa “—” quando ausente. A criação e o reenvio passam a exigir o campo. O esquema de notificações adiciona tabelas próprias sem apagar dados existentes.
 
 A reversão automática não restaura o banco, para não apagar solicitações criadas após a atualização. Uma restauração de dados exige avaliação do snapshot e das gravações posteriores, com serviço web, timer e worker parados. Antes de voltar a uma release anterior à migração v2, confirme sua compatibilidade com o esquema atual e com a regra de prioridade; não presuma que todo código antigo aplica as regras novas. Após restaurar o código, reative o timer somente se o SMTP estiver configurado e validado.

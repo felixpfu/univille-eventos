@@ -1459,7 +1459,7 @@ test("Version 1 migration preserves requests and reconstructs last actual send o
     audit.run("request.submitted", "resent", "2026-10-21T10:00:00.000Z");
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
     const rows = db
       .prepare(
         "SELECT id,name,submittedAt,queueSequence,organizer FROM events ORDER BY queueSequence",
@@ -1757,7 +1757,7 @@ test("Version 2 company migration is additive, preserves existing data and allow
     db.close();
     const app = createApp({ dbPath, now: fixedNow });
     db = app.locals.db;
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
     const migrated = db
       .prepare("SELECT * FROM users WHERE id='legacy-owner'")
       .get();
@@ -1793,7 +1793,7 @@ test("Version 2 company migration is additive, preserves existing data and allow
     const saved = db.prepare("SELECT * FROM users").all();
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
     assert.deepEqual(db.prepare("SELECT * FROM users").all(), saved);
     assert.equal(db.prepare("SELECT count(*) AS n FROM events").get().n, 1);
   } finally {
@@ -1988,7 +1988,7 @@ test("Version 3 description migration preserves all records, leaves internal tex
     );
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
     for (const table of tables) {
       const rows = db.prepare(`SELECT * FROM ${table}`).all();
       if (table === "events") {
@@ -2003,7 +2003,7 @@ test("Version 3 description migration preserves all records, leaves internal tex
     const saved = db.prepare("SELECT * FROM events").all();
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 4);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 5);
     assert.deepEqual(db.prepare("SELECT * FROM events").all(), saved);
     assert.equal(db.prepare("PRAGMA foreign_key_check").all().length, 0);
   } finally {

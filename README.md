@@ -27,6 +27,10 @@ A API pública aceita `GET /api/events?month=YYYY-MM`: o parâmetro indica o pri
 
 O tema claro é o padrão, com modo escuro opcional e layout para computador e celular. A interface e o PowerPoint utilizam a [marca oficial, com origem documentada](public/branding/SOURCE.md).
 
+Em **Espaços**, os cards exibem imagem, descrição e capacidade máxima quando informada. O responsável informou, em **23/10/2026**, **300 pessoas no Auditório** e **120 no Miniauditório**. O Auditório utiliza uma fotografia publicada pela Univille em 2023; o Miniauditório e a imagem automática de sala usam ilustrações geradas por IA, identificadas na interface. Créditos e origem estão em [public/venues/SOURCE.md](public/venues/SOURCE.md).
+
+Clicar na imagem, no nome ou em **Ver agenda deste espaço** abre a Lista com o local fixado, permitindo consultar seus eventos futuros e passados pela navegação mensal. Limpar filtros nessa tela mantém o espaço; **Eventos** retorna à agenda geral. **Solicitar um evento** nesse card abre o formulário com o local preenchido; se for necessário entrar na conta, a seleção é mantida após o login de solicitante ou administrador. A administração edita capacidade e imagem em **Cadastros → Ambientes**, escolhendo imagens do catálogo local. Detalhes em [ESPACOS.md](docs/ESPACOS.md).
+
 Os eventos aprovados têm descrição pública opcional e detalhes de participação por curso e semestres. A descrição é um campo explícito: objetivo, justificativa e observações continuam internos. O botão **Ver detalhes** reúne essas informações para visitantes.
 
 **Sair da conta, cancelar um evento, excluir um rascunho ou cadastro, rejeitar uma solicitação, desativar uma conta e reduzir seu acesso** pedem confirmação com opção de **Voltar**. Os botões dessas ações usam fundo vermelho e texto branco. **Aprovar/publicar** também pede confirmação, com ação positiva verde. Durante a execução, a interface informa o andamento e impede envios repetidos; ao terminar, apresenta sucesso ou erro. Salvamentos comuns mantêm o indicador de andamento e a mensagem de resultado, sem uma confirmação adicional.
@@ -78,7 +82,7 @@ flowchart LR
 
 O backend concentra autorização, validações e transações. Senhas usam scrypt com salt; tokens de sessão são aleatórios e persistidos somente como hash. Em produção, cookies usam `HttpOnly`, `Secure`, `SameSite=Strict` e prefixo `__Host-`; escritas verificam a origem. Trocar a senha invalida sessões anteriores.
 
-Os dados ficam em `DATA_DIR/events.sqlite`, por padrão `./data`. Reiniciar ou recompilar não os apaga. A migração **v2** adiciona os novos campos e reconstrói a fila pelo histórico de envio, preservando contas, eventos e auditoria. A migração **v3** adiciona empresa/CNPJ às contas sem alterar dados existentes ou impedir login de contas antigas. A **v4** adiciona a descrição pública vazia, sem copiar textos internos. Nunca substitua o banco de produção por um banco de desenvolvimento. O diretório pode conter arquivos SQLite `-wal` e `-shm`; use backup consistente com serviço web e worker parados, ou API própria de backup SQLite.
+Os dados ficam em `DATA_DIR/events.sqlite`, por padrão `./data`. Reiniciar ou recompilar não os apaga. A migração **v2** adiciona os novos campos e reconstrói a fila pelo histórico de envio, preservando contas, eventos e auditoria. A migração **v3** adiciona empresa/CNPJ às contas sem alterar dados existentes ou impedir login de contas antigas. A **v4** adiciona a descrição pública vazia, sem copiar textos internos. A **v5** acrescenta capacidade e chave de imagem aos espaços, inicialmente sem preenchimento, preservando contas, eventos, versões, catálogos e vínculos. Nunca substitua o banco de produção por um banco de desenvolvimento. O diretório pode conter arquivos SQLite `-wal` e `-shm`; use backup consistente com serviço web e worker parados, ou API própria de backup SQLite.
 
 | Diretório                          | Responsabilidade                                                 |
 | ---------------------------------- | ---------------------------------------------------------------- |
@@ -86,6 +90,7 @@ Os dados ficam em `DATA_DIR/events.sqlite`, por padrão `./data`. Reiniciar ou r
 | `server/`                          | API, regras, migração, geração de PPTX/PDF e fila de e-mail      |
 | `public/branding/`                 | Marca institucional e registro da fonte                          |
 | `public/fonts/`                    | Fontes Noto Sans e licença para incorporação no PDF              |
+| `public/venues/`                   | Fotografias e ilustrações dos espaços, com origem documentada    |
 | `scripts/admin.js`                 | Provisionamento administrativo pela CLI                          |
 | `scripts/process-notifications.js` | Processamento opcional da fila SMTP                              |
 | `tests/`                           | Integração HTTP/SQLite, notificações simuladas e validação OOXML |
@@ -99,9 +104,9 @@ npm run build
 npm audit --omit=dev
 ```
 
-A suíte da revisão **v1.6.0** contém **54 testes automatizados**: os 43 casos anteriores, nove do cálculo de meses da agenda e dois do acesso público a janelas históricas e futuras. O helper cobre agrupamentos negativos, mudança de ano, fevereiro, limites de 1900/9999, argumentos inválidos e independência de fuso horário. Os novos casos HTTP cobrem o parâmetro de mês, os limites aceitos e a preservação das regras de publicação e privacidade. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+A suíte da revisão **v1.7.0** contém **60 testes automatizados**: os 54 casos anteriores e seis de espaços. A execução local registrou 60 aprovados, build aprovado e auditoria das dependências de produção com zero vulnerabilidades conhecidas. Os novos casos cobrem migração v4 → v5 sem perda de dados ou versões, base vazia, metadados públicos, permissões administrativas, edição com campos omitidos e limpeza explícita, capacidade inteira e seleção de imagens locais. A auditoria é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
 
-O roteiro da navegação entre meses está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-navegação-pública-entre-meses--v160), junto ao aceite de calendário/lista e das confirmações de ações. Resultados de testes, navegador e publicação devem ser registrados nesse documento depois de executados.
+Os roteiros de [espaços](docs/VALIDACAO.md#aceite-dos-espaços--v170), navegação entre meses, calendário/lista e confirmações de ações estão em [VALIDACAO.md](docs/VALIDACAO.md). Resultados de testes, navegador e publicação devem ser registrados nesse documento depois de executados.
 
 O responsável autorizou que **as alterações solicitadas neste projeto sejam versionadas no GitHub e publicadas em flxpfu.com.br** após verificação. A autorização está registrada em [AGENTS.md](AGENTS.md). O procedimento de empacotar, publicar, verificar a versão ativa e reverter está em [DEPLOYMENT.md](docs/DEPLOYMENT.md). O site anterior e os snapshots de atualização são preservados.
 
@@ -119,7 +124,7 @@ Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. 
 
 A carga opcional e explícita de oito eventos de exemplo, com horários, descrições, cursos e semestres variados, está documentada em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md). A atualização de [conteúdo para apresentação](docs/APRESENTACAO.md) dá aos exemplos linguagem institucional, sem os rótulos de demonstração na agenda, mantendo sua origem documentada e as observações internas. Os scripts usam a API autenticada e preservam registros alheios ao plano; migrações e inicialização não executam essas operações. O conteúdo preparado não representa programação oficial verificada.
 
-Os locais **Auditório** e **Miniauditório**, informados pelo responsável, aparecem primeiro nas opções de **Local do evento**. Os exemplos usam esses locais sem presumir equipamentos ou capacidade; o procedimento para atualizar exemplos já publicados está em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
+Os locais **Auditório** e **Miniauditório**, informados pelo responsável, aparecem primeiro nas opções de **Local do evento**. Suas capacidades de 300 e 120 pessoas também foram informadas pelo responsável em 23/10/2026; a imagem não é usada para inferir lotação ou equipamentos. O procedimento histórico para atualizar os locais dos exemplos está em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 
 ## Acessos para apresentação
 

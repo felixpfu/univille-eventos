@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { roomImages } from "./room-media.js";
 
 export class HttpError extends Error {
   constructor(status, message, code = "VALIDATION_ERROR", fields) {
@@ -188,6 +189,7 @@ export function eventList(db, where = "1=1", params = [], queueOrder = false) {
 }
 export function metadata(db, full = true) {
   const result = {};
+  result.roomImages = roomImages.map((image) => ({ ...image }));
   for (const entity of catalogs)
     result[entity] = db
       .prepare(`SELECT * FROM ${entity} ORDER BY name COLLATE NOCASE`)
@@ -207,11 +209,15 @@ export function metadata(db, full = true) {
       result.costCenters.find((c) => c.id === course.costCenterId)?.name || "",
   }));
   if (!full) {
-    result.rooms = result.rooms.map(({ id, name, description }) => ({
-      id,
-      name,
-      description,
-    }));
+    result.rooms = result.rooms.map(
+      ({ id, name, description, capacity, imageKey }) => ({
+        id,
+        name,
+        description,
+        capacity,
+        imageKey,
+      }),
+    );
     result.resources = [];
     result.courses = result.courses.map(({ id, name }) => ({ id, name }));
     result.costCenters = [];

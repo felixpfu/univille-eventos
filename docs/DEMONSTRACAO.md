@@ -4,7 +4,7 @@ Este documento descreve o conjunto e os scripts históricos de carga e atualiza�
 
 O responsável solicitou exemplos públicos com horários variados, descrição e participação por curso e semestre. O conjunto versionado em `scripts/demo-events.json` contém oito eventos entre **26/10 e 02/12/2026**, cobrindo manhã, tarde e noite. Os títulos e cursos mantêm “· Demonstração”; o tema é “Demonstração acadêmica”. As descrições informam explicitamente que os eventos são fictícios. Esses exemplos **não representam programação oficial nem confirmam a oferta dos cursos no campus**.
 
-Os locais usam os nomes exatos **Auditório** e **Miniauditório**, informados pelo responsável para o campus São Bento do Sul. Não são atribuídas capacidades, equipamentos ou outras características não fornecidas. Os eventos não solicitam recursos desses locais.
+Os locais usam os nomes exatos **Auditório** e **Miniauditório**, informados pelo responsável para o campus São Bento do Sul. Os scripts históricos não atribuem capacidades ou equipamentos e os eventos não solicitam recursos desses locais. Na revisão v1.7.0, o responsável informou, em 23/10/2026, as capacidades de 300 e 120 pessoas; esses dados e as imagens são configurados separadamente no cadastro de espaços, conforme [ESPACOS.md](ESPACOS.md).
 
 | Data       | Horário     | Evento                                   | Local         | Curso de exemplo       | Semestres   |
 | ---------- | ----------- | ---------------------------------------- | ------------- | ---------------------- | ----------- |

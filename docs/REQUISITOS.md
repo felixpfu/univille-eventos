@@ -34,6 +34,16 @@ A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro o
 
 A resposta pública apresenta nome, descrição pública, tema, data, início/fim, local, palestrante, setor/curso, realização e público-alvo com seu curso e semestre. A descrição pública é um campo explícito e opcional de até 2.000 caracteres, distinto do objetivo interno. Eventos existentes ficam com esse campo vazio até o preenchimento. A agenda não expõe rascunhos, pendentes, rejeitados, cancelados, autor, solicitante livre, centro de custo, objetivo, justificativas ou observações internas. O catálogo público de setores/cursos contém somente identificador e nome.
 
+## Espaços, capacidade e imagens
+
+Os espaços apresentam imagem, descrição e capacidade máxima. O responsável informou **300 pessoas para o Auditório** e **120 para o Miniauditório**, em **23/10/2026**. Capacidade sem informação é armazenada como `null` e exibida como não informada. A API aceita apenas inteiros de 1 a 100.000 ou `null`; esses valores descrevem o espaço e não representam contagem de participantes ou controle de inscrições.
+
+A administração edita capacidade e imagem no cadastro de ambientes. A imagem é escolhida por uma chave de catálogo, sem uploads nem URLs arbitrárias. O Auditório tem uma fotografia publicada no portal Univille em 2023; Miniauditório e sala automática usam ilustrações geradas por IA, identificadas como ilustrativas. Sem chave explícita, a interface usa uma ilustração de miniauditório para nomes de auditório e uma ilustração de sala para os demais espaços. As imagens não são usadas para inferir recursos ou capacidade. Origem e créditos estão em [public/venues/SOURCE.md](../public/venues/SOURCE.md).
+
+Imagem, nome e **Ver agenda deste espaço** abrem a Lista com o local fixado: o seletor de local fica travado e limpar os demais filtros não remove o espaço. A navegação mensal permite consultar eventos aprovados futuros e passados, mantendo as mesmas regras de privacidade; **Eventos** retorna ao calendário geral. **Solicitar um evento** no card ou **Solicitar neste espaço** na agenda preenche o local do novo pedido; a seleção é preservada quando a pessoa precisa entrar na conta antes de abrir o formulário. Um novo pedido iniciado em **Minhas solicitações** não herda esse local. Contas visitantes continuam sem permissão para enviar solicitações.
+
+Os metadados públicos de cada espaço contêm somente identificador, nome, descrição, capacidade e chave da imagem. O registro de imagens apresenta chave, rótulo, caminho local, texto alternativo, tipo, crédito e URL de origem. Vínculos com recursos permanecem nos metadados autenticados de solicitantes e administradores. Detalhes operacionais em [ESPACOS.md](ESPACOS.md).
+
 ## Campos da solicitação
 
 | Grupo                          | Campos                                                                                                                                                |
@@ -104,6 +114,8 @@ A fila persiste confirmações/publicações após aprovação e edição de apr
 ## Persistência, publicação e limites
 
 A migração v2 é aditiva e preserva contas, catálogos, eventos e histórico. Para registros enviados anteriores, usa a última auditoria `request.submitted`; em pendentes, procura um envio após a última rejeição. Somente na ausência dessa evidência usa `updatedAt`, depois `createdAt`, como aproximação histórica documentada. Os próximos envios têm sequência exata. Realização permanece vazia em registros antigos; não se inventa seu valor. Pendentes antigos podem ser aprovados sem esse campo, mas novo envio/reenvio e edição completa exigem preenchimento.
+
+A migração v5 acrescenta `rooms.capacity` anulável e `rooms.imageKey` inicialmente vazio. É transacional e idempotente; não altera eventos, versões, contas, catálogos anteriores, recursos, fila ou auditoria, nem preenche valores pelo nome do ambiente. As capacidades e imagens informadas para os espaços são configurações explícitas posteriores, sem carga automática durante migração ou inicialização.
 
 As alterações solicitadas serão verificadas, versionadas no repositório público e publicadas na raiz de `flxpfu.com.br`, segundo autorização persistente do responsável. Segredos, anexos privados e banco operacional permanecem fora do GitHub. A implantação mantém snapshots e possibilidade de reversão.
 

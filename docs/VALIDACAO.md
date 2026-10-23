@@ -20,6 +20,8 @@ Na v1.5.0, a suíte passa a **43 testes**. Duas regressões CSV usam `csv-parse`
 
 A revisão **v1.6.0** contém **54 testes**: acrescenta nove casos do helper de navegação mensal e dois casos HTTP da janela pública aos 43 anteriores. O helper verifica grupos negativos, virada de ano, fevereiro em anos bissextos e comuns, limites de janeiro de 1900/dezembro de 9999, argumentos inválidos e resultados iguais em três fusos horários. Os casos HTTP conferem o parâmetro `month`, consultas históricas e futuras, limites e formatos inválidos e a preservação dos filtros de aprovação e privacidade. A execução integral, o build, a auditoria e o CI devem ser conferidos a cada publicação.
 
+A revisão **v1.7.0** contém **60 testes**, acrescentando seis casos de espaços aos 54 anteriores. A execução local integral registrou **60 aprovados**, o build foi aprovado e `npm audit --omit=dev` informou **zero vulnerabilidades conhecidas** nessa execução. Os casos cobrem base vazia, migração v4 → v5 com dados e versões preservados, reaplicação idempotente, metadados públicos, permissões, edição com campos omitidos e limpeza explícita, limites e tipos de capacidade e recusa de chaves de imagem externas ou desconhecidas. CI e publicação dessa versão devem ter seus resultados registrados depois de concluídos; o aceite local de navegador está descrito abaixo.
+
 | Grupo                      | Evidências                                                                                                                                                                                 |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Autenticação e permissões  | Hash de senha, sessões, origem/CSRF, cookies de produção, propriedade de pedidos, desativação e expiração.                                                                                 |
@@ -61,7 +63,7 @@ A apresentação foi reconstruída a partir da fotografia. Na revisão de 23/10/
 
 O pacote de release executa testes e build antes da transferência. O instalador usa dependências de produção pelo lockfile, mantém os dados fora das releases e verifica `/api/health` e a página em localhost. Com `--publish`, também verifica ambos pelo HTTPS e hostname reais. O registro da publicação deve identificar o commit/release efetivamente ativo e o resultado das verificações, sem credenciais.
 
-Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. As migrações v2, v3 e v4 são aditivas; cópia de base de desenvolvimento não integra a publicação. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
+Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. As migrações v2, v3, v4 e v5 são aditivas; cópia de base de desenvolvimento não integra a publicação. A v5 acrescenta capacidade e chave de imagem aos espaços sem preencher dados ou alterar eventos e versões. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Roteiro de aceite
 
@@ -79,6 +81,25 @@ Use dados fictícios e sessões separadas de visitante, solicitante e administra
 10. Troque a senha e confirme a revogação de sessões antigas. Confira as confirmações antes de sair da conta, desativar outra conta ou reduzir seu acesso; use **Voltar** antes de repetir e confirmar. Confira perda de acesso após a desativação e preserve o último administrador ativo.
 11. Repita navegação, filtros, formulário e diálogos em computador e celular. Confira foco de teclado, rolagem, rótulos e mensagens de erro.
 12. Após publicar, abra o domínio real e confira os fluxos alterados, a nova versão dos assets e a persistência de contas/eventos existentes.
+
+## Aceite dos espaços — v1.7.0
+
+Roteiro para executar em base local temporária; os itens numerados são resultados esperados e a evidência local aparece após os cenários. As capacidades de 300 pessoas no Auditório e 120 no Miniauditório foram informadas pelo responsável em 23/10/2026.
+
+1. Abra **Espaços** sem login e confira cards, nomes, descrições e capacidade. Com os dois locais configurados, confirme 300 e 120 pessoas; para uma sala sem valor, confira **Capacidade não informada**.
+2. Confira a fotografia do Auditório, seu crédito Univille e o link de origem de 2023. No Miniauditório e nas imagens automáticas, confira o rótulo ilustrativo e o crédito de geração por IA, sem apresentar ilustração como foto real. Confira carregamento local e texto alternativo.
+3. Clique na imagem, no nome e em **Ver agenda deste espaço**. Confira a Lista com o local identificado e fixado, inclusive após limpar os demais filtros. Navegue a meses anteriores e futuros e confirme apenas aprovados do local escolhido; volte pelos cards em **Todos os espaços** e confira **Eventos** retornando ao calendário geral.
+4. Como solicitante, use **Solicitar um evento** no card, **Solicitar neste espaço** na agenda e **Propor um evento** em seu estado vazio. Confira o local preenchido e sua capacidade no formulário. Feche sem salvar e repita sem sessão: entre com uma conta solicitante ou administrativa e confirme a preservação da seleção após login. Inicie outro pedido por **Minhas solicitações** e confira que ele começa sem local herdado. Confira que visitante não pode criar pedido.
+5. Como administrador, edite capacidade e imagem de uma sala de teste. Confira a persistência após reabrir e recarregar; esvazie a capacidade e escolha a imagem automática. Confira o estado sem informação e a ilustração de fallback. Preserve recursos vinculados e os eventos existentes.
+6. Pela API, confira omissão dos novos campos em PUT preservando seus valores, `capacity: null` e `imageKey: ""` limpando as escolhas, e respostas 400 para capacidade fracionária, negativa, fora de faixa, textual ou não finita e imagens externas/desconhecidas. Visitante, solicitante e sessão anônima não podem editar o catálogo.
+7. Antes e depois da migração v4 → v5 e de sua repetição, compare contas, eventos, identificadores, versões, catálogos, fila, auditoria e vínculos. Confira `null`/chave vazia nos espaços antigos e base nova sem carga automática. Nos metadados anônimos, confira capacidade e registro de imagens sem vínculos de recursos ou campos privados.
+8. Repita cards, agenda do espaço, formulário e administração em computador e celular, nos temas claro e escuro. Confira créditos legíveis, teclado, foco, controles e ausência de rolagem horizontal da página. Após a publicação autorizada, registre a versão ativa e repita os fluxos no domínio real sem alterar eventos de produção para facilitar a revisão.
+
+Na revisão local com dados fictícios, as imagens carregaram e os cards exibiram 300/120 pessoas. O Auditório abriu a Lista com dois eventos daquele local; **Limpar filtros** manteve o espaço e seu seletor travado. No Miniauditório, a navegação encontrou eventos fictícios de setembro e de janeiro. **Eventos** retornou ao calendário geral.
+
+Após login com administrador fictício, a solicitação reabriu com Auditório e sua capacidade preenchidos. Um pedido novo em **Minhas solicitações** começou sem local herdado. Em uma sala da base de teste, salvar capacidade 301 e a ilustração de sala pela administração refletiu os novos dados na página pública; essa alteração foi restrita à fixture local.
+
+Em 390 × 844, os cards mantiveram a mesma geometria nos temas claro e escuro, sem rolagem horizontal da página. Os cards também foram conferidos em 320 × 844, com largura de rolagem da página igual aos 320 px disponíveis. Esses cenários não comprovam publicação concluída nem revisão de todos os dispositivos. A origem dos arquivos e o contrato de dados estão em [ESPACOS.md](ESPACOS.md).
 
 ## Aceite da navegação pública entre meses — v1.6.0
 

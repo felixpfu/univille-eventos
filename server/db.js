@@ -65,7 +65,29 @@ export function openDatabase(path = databasePath()) {
   migrateEventQueue(db);
   migrateCompanyDetails(db);
   migratePublicDescription(db);
+  migrateRoomDetails(db);
   return db;
+}
+
+function migrateRoomDetails(db) {
+  if (db.prepare("PRAGMA user_version").get().user_version >= 5) return;
+  transaction(db, () => {
+    const columns = new Set(
+      db
+        .prepare("PRAGMA table_info(rooms)")
+        .all()
+        .map((row) => row.name),
+    );
+    // Keep legacy catalogs, references and events exactly as they were. No
+    // capacity or image is inferred from the name of a room.
+    if (!columns.has("capacity"))
+      db.exec(
+        "ALTER TABLE rooms ADD COLUMN capacity INTEGER CHECK(capacity IS NULL OR (typeof(capacity)='integer' AND capacity BETWEEN 1 AND 100000))",
+      );
+    if (!columns.has("imageKey"))
+      db.exec("ALTER TABLE rooms ADD COLUMN imageKey TEXT NOT NULL DEFAULT ''");
+    db.exec("PRAGMA user_version = 5");
+  });
 }
 
 function migratePublicDescription(db) {
