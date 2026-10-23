@@ -178,7 +178,7 @@ function Requests({ api, metadata, onOpenRequest, refreshKey, onRefresh }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("pending");
+  const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
     let current = true;
