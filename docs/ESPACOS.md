@@ -1,4 +1,4 @@
-# Espaços, imagens e capacidade — v1.7.0
+# Espaços, imagens e capacidade — v1.7.2
 
 A página **Espaços** reúne os locais cadastrados, com imagem, descrição, capacidade máxima e acesso à agenda. Os valores abaixo foram informados pelo responsável em **23/10/2026**, para o campus São Bento do Sul:
 
@@ -11,9 +11,11 @@ As capacidades não foram calculadas a partir das imagens. Espaços sem capacida
 
 ## Agenda e solicitação por espaço
 
-Clique na imagem, no nome ou em **Ver agenda deste espaço**. A agenda abre na visualização **Lista**, com o local fixado e identificado no cabeçalho. O seletor de local fica travado e limpar filtros mantém o espaço. As abas e setas de mês permitem consultar seus eventos aprovados futuros e passados. **Todos os espaços** retorna aos cards; **Eventos**, na navegação principal, abre novamente o calendário geral.
+Clique na imagem, no nome ou em **Ver agenda deste espaço**. A agenda abre na visualização **Lista**, com o local pré-selecionado e identificado no cabeçalho. O seletor de local permanece editável para trocar de espaço ou escolher todos. As abas e setas de mês permitem consultar eventos aprovados futuros e passados. **Todos os espaços** retorna aos cards; **Eventos**, na navegação principal, abre novamente o calendário geral.
 
-**Solicitar um evento**, no card, ou **Solicitar neste espaço**, na agenda, abre um novo pedido com o local preenchido. **Propor um evento**, no estado vazio dessa agenda, mantém a mesma seleção. Para uma pessoa sem sessão, o sistema pede login e mantém essa escolha quando uma conta de solicitante ou administrador entra. O local continua editável no formulário; outro pedido iniciado em **Minhas solicitações** começa sem local herdado. Contas visitantes consultam a agenda, mas não ganham permissão para criar pedidos por esse caminho.
+Na **v1.7.2**, **Limpar filtros** remove todos os filtros: busca, setor/curso, tema, local e dia, inclusive o local pré-selecionado ao abrir a agenda por um espaço. O mês selecionado e a visualização permanecem iguais. **Ver todos do mês** tem uma ação mais restrita: remove somente o recorte por dia e mantém os demais filtros.
+
+**Solicitar um evento**, no card, abre um novo pedido com o local preenchido. Na agenda, **Solicitar neste espaço** ou **Propor um evento**, no estado vazio, usa o local atualmente selecionado; após limpar os filtros, não há local para pré-preencher. Para uma pessoa sem sessão, o sistema pede login e mantém essa escolha quando uma conta de solicitante ou administrador entra. O local continua editável no formulário; outro pedido iniciado em **Minhas solicitações** começa sem local herdado. Contas visitantes consultam a agenda, mas não ganham permissão para criar pedidos por esse caminho.
 
 ## Administração
 

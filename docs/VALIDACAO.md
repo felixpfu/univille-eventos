@@ -43,6 +43,8 @@ A revisão externa do PPTX utilizou os esquemas oficiais ECMA-376 Parte 4: os 30
 
 ## Interface e documentos
 
+Na **v1.7.2**, **Limpar filtros** remove todos os filtros, incluindo o local pré-selecionado pela página Espaços, preservando mês e visualização. Na revisão local, o Auditório abriu com dois eventos e a limpeza restaurou os cinco eventos do mês. A combinação de busca, setor, tema, local e dia foi removida integralmente. O seletor permitiu trocar o espaço, o cabeçalho acompanhou a seleção e a limpeza também preservou novembro e a visualização Calendário. Em 390 e 320 px não houve rolagem horizontal da página; a limpeza foi repetida em 390 px. O aceite posterior à publicação deve repetir o fluxo e conferir solicitação sem local herdado após limpar.
+
 Na **v1.7.1**, o grupo de ações dos relatórios ocupa a última coluna do grid, alinhando **Semana atual** e **Aplicar filtros** à borda direita dos campos. A revisão local conferiu os períodos semanal e anual, aplicação dos filtros e retorno à semana atual. Em computador e nos temas claro/escuro, as bordas dos botões coincidiram com a borda direita do formulário. Em 980, 390 e 320 px, o grupo permaneceu à direita, com quebra de linha quando necessária e sem rolagem horizontal da página. A alteração é somente de apresentação, sem migração ou escrita em contas/eventos.
 
 Na v1.5.0, a revisão local conferiu os três botões de exportação lado a lado no computador e empilhados em tela de 390 × 844, sem rolagem horizontal da página. O período anual foi aplicado pela interface e os links passaram a usar suas datas; o botão PDF foi acionado. O teste HTTP lê o documento baixado com parser real, incluindo a mesma combinação de filtros aplicada pela interface.
@@ -85,6 +87,8 @@ Use dados fictícios e sessões separadas de visitante, solicitante e administra
 12. Após publicar, abra o domínio real e confira os fluxos alterados, a nova versão dos assets e a persistência de contas/eventos existentes.
 
 ## Aceite dos espaços — v1.7.0
+
+**Registro histórico:** esta seção preserva os cenários e resultados da v1.7.0, quando o local ficava fixado. A v1.7.2 corrige esse comportamento: o seletor fica editável e **Limpar filtros** remove também o local, conforme o contrato atual descrito acima e em [ESPACOS.md](ESPACOS.md).
 
 Roteiro para executar em base local temporária; os itens numerados são resultados esperados e a evidência local aparece após os cenários. As capacidades de 300 pessoas no Auditório e 120 no Miniauditório foram informadas pelo responsável em 23/10/2026.
 

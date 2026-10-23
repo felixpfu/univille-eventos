@@ -689,10 +689,8 @@ function Agenda({
   );
   const monthEvents = matching.filter((e) => e.date.startsWith(selectedMonth));
   const visible = monthEvents.filter((e) => !day || e.date === day);
-  const hasFilters =
-    search || themeId || (!initialRoomId && roomId) || courseId || day;
-  const scopedRoom =
-    initialRoomId && metadata.rooms.find((room) => room.id === roomId);
+  const hasFilters = search || themeId || roomId || courseId || day;
+  const scopedRoom = metadata.rooms.find((room) => room.id === roomId);
   return (
     <>
       <div className="page-heading agenda-heading">
@@ -895,7 +893,6 @@ function Agenda({
               Local do evento
               <select
                 value={roomId}
-                disabled={Boolean(initialRoomId)}
                 onChange={(e) => setRoomId(e.target.value)}
               >
                 <option value="">Todos os locais</option>
@@ -910,7 +907,7 @@ function Agenda({
               className="text-button"
               onClick={() => {
                 setThemeId("");
-                setRoomId(initialRoomId);
+                setRoomId("");
                 setCourseId("");
                 setSearch("");
                 setDay("");
