@@ -1834,6 +1834,9 @@ input[type="checkbox"] {
   gap: 14px;
   align-items: end;
 }
+.report-filters > .form-actions {
+  grid-column: -2 / -1;
+}
 .table-caption {
   font-size: 12px;
   color: var(--muted);

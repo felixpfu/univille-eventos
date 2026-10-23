@@ -43,6 +43,8 @@ A revisão externa do PPTX utilizou os esquemas oficiais ECMA-376 Parte 4: os 30
 
 ## Interface e documentos
 
+Na **v1.7.1**, o grupo de ações dos relatórios ocupa a última coluna do grid, alinhando **Semana atual** e **Aplicar filtros** à borda direita dos campos. A revisão local conferiu os períodos semanal e anual, aplicação dos filtros e retorno à semana atual. Em computador e nos temas claro/escuro, as bordas dos botões coincidiram com a borda direita do formulário. Em 980, 390 e 320 px, o grupo permaneceu à direita, com quebra de linha quando necessária e sem rolagem horizontal da página. A alteração é somente de apresentação, sem migração ou escrita em contas/eventos.
+
 Na v1.5.0, a revisão local conferiu os três botões de exportação lado a lado no computador e empilhados em tela de 390 × 844, sem rolagem horizontal da página. O período anual foi aplicado pela interface e os links passaram a usar suas datas; o botão PDF foi acionado. O teste HTTP lê o documento baixado com parser real, incluindo a mesma combinação de filtros aplicada pela interface.
 
 A revisão no navegador usou janelas de **1440 × 1000** e **390 × 844**, sem rolagem horizontal da página. Foram conferidos calendário inicial, navegação em lista, aplicação de período anual de 1º de janeiro a 31 de dezembro, download semanal de PowerPoint pela interface e salvamento do consentimento com o aviso explícito de SMTP indisponível. As telas utilizam São Bento do Sul, a marca institucional original e tema claro padrão.
