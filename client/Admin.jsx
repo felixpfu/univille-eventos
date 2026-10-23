@@ -48,6 +48,36 @@ const times = (row) =>
     ? `${row.startTime} – ${row.endTime}`
     : row.startTime || "—";
 const sameId = (a, b) => String(a) === String(b);
+const semesterLabel = (value) =>
+  /^\d+$/.test(String(value || "")) ? `${value}º semestre` : value || "";
+const submittedLabel = (value) =>
+  value && Number.isFinite(Date.parse(value))
+    ? new Intl.DateTimeFormat("pt-BR", {
+        dateStyle: "short",
+        timeStyle: "medium",
+        timeZone: "America/Sao_Paulo",
+      }).format(new Date(value))
+    : "Não enviada";
+
+function todaySaoPaulo() {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+function weekRange(value) {
+  const date = new Date(`${value || todaySaoPaulo()}T12:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return weekRange(todaySaoPaulo());
+  const mondayOffset = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - mondayOffset);
+  const from = date.toISOString().slice(0, 10);
+  date.setUTCDate(date.getUTCDate() + 6);
+  return { from, to: date.toISOString().slice(0, 10) };
+}
 
 function ErrorMessage({ message }) {
   return message ? (
@@ -254,6 +284,12 @@ function Requests({ api, metadata, onOpenRequest, refreshKey, onRefresh }) {
             </select>
           </label>
         </div>
+        {status === "pending" && (
+          <p className="muted">
+            Fila por ordem de envio. Solicitações anteriores para o mesmo
+            ambiente e horário têm prioridade de análise.
+          </p>
+        )}
         <ErrorMessage message={error} />
         {loading ? (
           <Loading />
@@ -275,6 +311,7 @@ function Requests({ api, metadata, onOpenRequest, refreshKey, onRefresh }) {
                   <tr>
                     <th>Evento</th>
                     <th>Data e horário</th>
+                    <th>Enviada em / fila</th>
                     <th>Ambiente</th>
                     <th>Status</th>
                     <th>
@@ -292,6 +329,12 @@ function Requests({ api, metadata, onOpenRequest, refreshKey, onRefresh }) {
                       <td>
                         {dateLabel(row.date)}
                         <small>{times(row)}</small>
+                      </td>
+                      <td>
+                        {submittedLabel(row.submittedAt)}
+                        {row.queueSequence && (
+                          <small>Ordem de envio: {row.queueSequence}</small>
+                        )}
                       </td>
                       <td>{row.roomName || "Não informado"}</td>
                       <td>
@@ -914,18 +957,21 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
 }
 
 function Reports({ api, metadata }) {
-  const [filters, setFilters] = useState({
-    from: "",
-    to: "",
-    courseId: "",
-    themeId: "",
-  });
-  const [applied, setApplied] = useState({
-    from: "",
-    to: "",
-    courseId: "",
-    themeId: "",
-  });
+  const today = useMemo(todaySaoPaulo, []);
+  const initial = useMemo(
+    () => ({
+      ...weekRange(today),
+      courseId: "",
+      themeId: "",
+      status: "",
+      period: "week",
+    }),
+    [today],
+  );
+  const [weekDay, setWeekDay] = useState(today);
+  const [year, setYear] = useState(today.slice(0, 4));
+  const [filters, setFilters] = useState(initial);
+  const [applied, setApplied] = useState(initial);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -933,7 +979,18 @@ function Reports({ api, metadata }) {
   const query = useMemo(
     () =>
       new URLSearchParams(
-        Object.entries(applied).filter(([, value]) => value),
+        Object.entries(applied).filter(
+          ([key, value]) => key !== "period" && value,
+        ),
+      ).toString(),
+    [applied],
+  );
+  const pptxQuery = useMemo(
+    () =>
+      new URLSearchParams(
+        Object.entries(applied).filter(
+          ([key, value]) => key !== "status" && value,
+        ),
       ).toString(),
     [applied],
   );
@@ -941,7 +998,7 @@ function Reports({ api, metadata }) {
     let current = true;
     setLoading(true);
     setError("");
-    api(`/admin/reports${query ? `?${query}` : ""}`)
+    api(`/admin/reports?${query}`)
       .then((data) => {
         if (current) setEvents(data.events);
       })
@@ -955,10 +1012,24 @@ function Reports({ api, metadata }) {
       current = false;
     };
   }, [api, query, refresh]);
+  function choosePeriod(period) {
+    const selectedYear =
+      /^\d{4}$/.test(year) && Number(year) >= 1900 ? year : today.slice(0, 4);
+    if (period === "year") setYear(selectedYear);
+    const range =
+      period === "week"
+        ? weekRange(weekDay)
+        : period === "year"
+          ? { from: `${selectedYear}-01-01`, to: `${selectedYear}-12-31` }
+          : { from: filters.from, to: filters.to };
+    setFilters({ ...filters, ...range, period });
+  }
   function submit(event) {
     event.preventDefault();
-    if (filters.from && filters.to && filters.from > filters.to) {
-      setError("A data final deve ser igual ou posterior à data inicial.");
+    if (!filters.from || !filters.to || filters.from > filters.to) {
+      setError(
+        "Informe um período válido, com a data final igual ou posterior à inicial.",
+      );
       return;
     }
     setApplied({ ...filters });
@@ -971,28 +1042,89 @@ function Reports({ api, metadata }) {
           <p className="eyebrow">DADOS PARA PLANEJAR</p>
           <h2>Relatórios de eventos</h2>
           <p className="muted">
-            Combine os filtros e exporte os resultados em CSV.
+            Selecione a semana, o ano ou um período personalizado.
           </p>
         </div>
         {!loading && !error && (
-          <a
-            className="button"
-            href={`${import.meta.env.BASE_URL}api/admin/reports.csv${query ? `?${query}` : ""}`}
-            download
-          >
-            <ArrowDownToLine size={17} />
-            Exportar CSV
-          </a>
+          <div className="view-controls">
+            <a
+              className="button"
+              href={`${import.meta.env.BASE_URL}api/admin/reports.csv?${query}`}
+              download
+            >
+              <ArrowDownToLine size={17} /> Excel / CSV
+            </a>
+            <a
+              className="button primary"
+              href={`${import.meta.env.BASE_URL}api/admin/agenda.pptx?${pptxQuery}`}
+              download
+            >
+              <ArrowDownToLine size={17} /> PowerPoint · aprovados
+            </a>
+          </div>
         )}
       </div>
       <form className="form-grid report-filters" onSubmit={submit}>
         <label className="field">
+          <span>Tipo de período</span>
+          <select
+            value={filters.period}
+            onChange={(event) => choosePeriod(event.target.value)}
+          >
+            <option value="week">Semanal · segunda a domingo</option>
+            <option value="year">Anual · ano completo</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </label>
+        {filters.period === "week" && (
+          <label className="field">
+            <span>Escolha um dia da semana desejada</span>
+            <input
+              type="date"
+              required
+              value={weekDay}
+              onChange={(event) => {
+                setWeekDay(event.target.value);
+                if (event.target.value)
+                  setFilters({ ...filters, ...weekRange(event.target.value) });
+              }}
+            />
+          </label>
+        )}
+        {filters.period === "year" && (
+          <label className="field">
+            <span>Ano do relatório</span>
+            <input
+              type="number"
+              min="1900"
+              max="9999"
+              required
+              value={year}
+              onChange={(event) => {
+                const next = event.target.value;
+                setYear(next);
+                if (/^\d{4}$/.test(next))
+                  setFilters({
+                    ...filters,
+                    from: `${next}-01-01`,
+                    to: `${next}-12-31`,
+                  });
+              }}
+            />
+          </label>
+        )}
+        <label className="field">
           <span>Data inicial</span>
           <input
             type="date"
+            required
             value={filters.from}
             onChange={(event) =>
-              setFilters({ ...filters, from: event.target.value })
+              setFilters({
+                ...filters,
+                from: event.target.value,
+                period: "custom",
+              })
             }
           />
         </label>
@@ -1000,22 +1132,27 @@ function Reports({ api, metadata }) {
           <span>Data final</span>
           <input
             type="date"
+            required
             min={filters.from || undefined}
             value={filters.to}
             onChange={(event) =>
-              setFilters({ ...filters, to: event.target.value })
+              setFilters({
+                ...filters,
+                to: event.target.value,
+                period: "custom",
+              })
             }
           />
         </label>
         <label className="field">
-          <span>Curso / coordenação</span>
+          <span>Setor / curso / coordenação</span>
           <select
             value={filters.courseId}
             onChange={(event) =>
               setFilters({ ...filters, courseId: event.target.value })
             }
           >
-            <option value="">Todos os cursos</option>
+            <option value="">Todos os setores e cursos</option>
             {metadata.courses?.map((row) => (
               <option value={row.id} key={row.id}>
                 {row.name}
@@ -1039,25 +1176,48 @@ function Reports({ api, metadata }) {
             ))}
           </select>
         </label>
+        <label className="field">
+          <span>Status da tabela e do CSV</span>
+          <select
+            value={filters.status}
+            onChange={(event) =>
+              setFilters({ ...filters, status: event.target.value })
+            }
+          >
+            <option value="">Todos os status</option>
+            {Object.entries(STATUS)
+              .filter(([key]) => key !== "draft")
+              .map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+          </select>
+        </label>
         <div className="form-actions">
           <button
             className="button"
             type="button"
             onClick={() => {
-              const clean = { from: "", to: "", courseId: "", themeId: "" };
-              setFilters(clean);
-              setApplied(clean);
+              setWeekDay(today);
+              setYear(today.slice(0, 4));
+              setFilters(initial);
+              setApplied(initial);
               setRefresh((value) => value + 1);
             }}
           >
-            Limpar
+            Semana atual
           </button>
           <button className="button primary" type="submit" disabled={loading}>
-            <Search size={16} />
-            Aplicar filtros
+            <Search size={16} /> Aplicar filtros
           </button>
         </div>
       </form>
+      <p className="muted table-caption">
+        Período aplicado: {dateLabel(applied.from)} a {dateLabel(applied.to)}. O
+        PowerPoint inclui somente eventos aprovados nos filtros de período,
+        setor e tema. O CSV acompanha o status selecionado.
+      </p>
       <ErrorMessage message={error} />
       {loading ? (
         <Loading children="Preparando relatório…" />
@@ -1077,7 +1237,7 @@ function Reports({ api, metadata }) {
                 : "eventos encontrados"}
             </p>
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table report-data-table">
                 <thead>
                   <tr>
                     <th>Evento</th>
@@ -1085,9 +1245,11 @@ function Reports({ api, metadata }) {
                     <th>Início</th>
                     <th>Fim</th>
                     <th>Tema</th>
-                    <th>Curso / coordenação</th>
+                    <th>Setor / curso</th>
                     <th>Centro de custo</th>
                     <th>Ambiente</th>
+                    <th>Realização</th>
+                    <th>Público</th>
                     <th>Solicitante</th>
                     <th>Status</th>
                   </tr>
@@ -1105,6 +1267,18 @@ function Reports({ api, metadata }) {
                       <td>{row.courseName || "—"}</td>
                       <td>{row.costCenterName || "—"}</td>
                       <td>{row.roomName || "—"}</td>
+                      <td>{row.organizer || "—"}</td>
+                      <td>
+                        {[
+                          row.audience,
+                          row.audienceCourseName,
+                          /^\d+$/.test(String(row.audienceSemester || ""))
+                            ? `${row.audienceSemester}º semestre`
+                            : row.audienceSemester,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </td>
                       <td>{row.requesterName || row.requester || "—"}</td>
                       <td>
                         <span className={`badge ${row.status}`}>

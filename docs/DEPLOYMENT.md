@@ -1,6 +1,6 @@
 # Publicação no flxpfu.com.br
 
-O destino autorizado é a **raiz de https://flxpfu.com.br/**. O build usa `/`, a API fica em `/api` e o processo escuta somente em `127.0.0.1:3002`. O Nginx mantém HTTPS e encaminha as requisições à aplicação.
+O destino autorizado é a **raiz de https://flxpfu.com.br/**. Em 23/10/2026, o responsável autorizou que as alterações solicitadas neste projeto sejam versionadas no [repositório público](https://github.com/felixpfu/univille-eventos) e publicadas neste domínio após verificação, sem pedir novamente aprovação para esse fluxo já autorizado. O build usa `/`, a API fica em `/api` e o processo escuta somente em `127.0.0.1:3002`. O Nginx mantém HTTPS e encaminha as requisições à aplicação.
 
 O site STENDEC anterior continua armazenado em `/var/www/flxpfu.com.br/current`, sem alterações em seus arquivos ou no symlink. A configuração original do Nginx é copiada antes da troca, permitindo restaurá-lo. O repositório público contém somente código e exemplos de configuração; banco, sessões, senhas e configuração SMTP permanecem fora dele.
 
@@ -17,7 +17,7 @@ O site STENDEC anterior continua armazenado em `/var/www/flxpfu.com.br/current`,
 | `/etc/systemd/system/univille-eventos.service`    | Serviço executado pelo usuário `univille-eventos`                    |
 | `/var/backups/univille-eventos/deploy-RELEASE_ID` | Snapshot de dados, configuração Nginx e referência à versão anterior |
 
-O servidor auditado possui Ubuntu 24.04, Python 3.12, Nginx e acesso pelo alias SSH `aws`. Não é necessário abrir a porta 3002 no firewall. O Node do sistema e outros processos permanecem independentes.
+O ambiente registrado na implantação inicial possui Ubuntu 24.04, Python 3.12, Nginx e acesso pelo alias SSH `aws`. Confirme as condições do servidor antes de atualizar. Não é necessário abrir a porta 3002 no firewall. O Node do sistema e outros processos permanecem independentes.
 
 ## Runtime
 
@@ -38,6 +38,8 @@ Use Node 24. O pacote é compilado no computador de desenvolvimento, reduzindo u
 ```bash
 bash deploy/package-release.sh ../univille-eventos-release.tar.gz
 ```
+
+Antes de empacotar, revise o diff, execute a auditoria de produção, faça commit das alterações solicitadas e envie o commit ao GitHub. Use o commit/release no registro da publicação para identificar o código efetivamente implantado. Não inclua dados locais ou segredos.
 
 Esse comando instala dependências pelo lockfile, executa os testes e compila o React com base `/`. O tarball inclui uma lista explícita de diretórios e exclui `.env`, banco e `node_modules`. Não copie um banco de desenvolvimento para produção.
 
@@ -77,7 +79,7 @@ PUBLIC_ORIGIN=https://flxpfu.com.br
 NODE_OPTIONS=--max-old-space-size=192
 ```
 
-O backend confia em cabeçalhos de proxy somente quando a conexão vem de loopback, onde está o Nginx. Edite informações sensíveis diretamente no servidor com `sudoedit /etc/univille-eventos.env`. Não inclua credenciais em comandos, argumentos, screenshots ou commits. O arquivo permanece `0600`, e o systemd carrega as variáveis antes de reduzir privilégios. Reinicie somente `univille-eventos` depois de editar seu ambiente.
+O backend confia em cabeçalhos de proxy somente quando a conexão vem de loopback, onde está o Nginx. Edite informações sensíveis diretamente no servidor com `sudoedit /etc/univille-eventos.env`. Não inclua credenciais em comandos, argumentos, screenshots ou commits. O arquivo permanece `0600`, e o systemd carrega as variáveis antes de reduzir privilégios. Reinicie `univille-eventos` depois de editar seu ambiente. O worker é um serviço separado e lê o mesmo arquivo a cada execução; mantenha seu timer desativado enquanto não houver SMTP configurado e validado.
 
 ## Trocar a página principal
 
@@ -116,29 +118,51 @@ ssh -t aws 'sudo -u univille-eventos env DATA_DIR=/var/lib/univille-eventos /opt
 
 A CLI também aceita a senha via stdin quando e-mail e nome são argumentos; sem esses argumentos, aceita um objeto JSON contendo `email`, `name` e `password`. A opção `--replace` redefine explicitamente uma conta existente e invalida suas sessões, devendo ser usada somente quando essa alteração for desejada.
 
-O login desta versão identifica a conta por e-mail e senha. Envio de mensagens, confirmação de propriedade do e-mail e recuperação automática de senha não estão integrados a um provedor; exigem uma implementação posterior e credenciais reais. Não acrescente variáveis SMTP esperando que produzam um comportamento ainda ausente no código.
+O login identifica a conta por e-mail e senha. Confirmação da propriedade do e-mail e notificações estão implementadas, mas **nenhum provedor SMTP foi definido nesta entrega**, conforme decisão do responsável. A recuperação automática de senha não está implementada e não é habilitada pelas variáveis SMTP.
+
+As preferências exigem consentimento e confirmação do endereço da conta. A confirmação dos pedidos do solicitante acompanha a preferência de novos eventos; lembretes têm preferência separada. A interface informa a indisponibilidade sem configuração. Detalhes e variáveis em [EMAIL.md](EMAIL.md).
+
+O instalador fornece `univille-notifications.service` e `univille-notifications.timer`, usando o mesmo usuário, runtime, `DATA_DIR` e arquivo de ambiente do serviço web. O timer só é habilitado quando `notificationConfig.available` indica configuração coerente; sem SMTP permanece desativado. Disponibilidade de configuração não comprova entrega pelo provedor. Nesta publicação, não acrescente credenciais fictícias nem habilite o envio real.
+
+Quando um provedor for definido, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_FROM` e, quando necessário, `SMTP_USER`/`SMTP_PASS` exclusivamente no arquivo protegido. Use remetente autorizado, HTTPS em `PUBLIC_ORIGIN` e TLS com certificado válido. Valide o provedor com uma conta de teste autorizada antes de ativar o timer:
+
+```bash
+sudo systemctl enable --now univille-notifications.timer
+sudo systemctl status univille-notifications.timer --no-pager
+sudo journalctl -u univille-notifications -n 50 --no-pager
+```
+
+O timer processa a fila a cada cinco minutos. `scripts/process-notifications.js` envia mensagens elegíveis quando SMTP está disponível; não o execute contra produção apenas para inspecionar a configuração. O journal limita-se a contadores agregados e códigos, sem corpo, tokens ou senhas. Nenhum e-mail é enviado por build ou testes.
 
 ## Backup e reversão
 
-Antes de substituir uma versão, o instalador para brevemente o serviço e copia **todo** o diretório de dados, incluindo o banco e possíveis arquivos WAL. Isso produz um snapshot consistente. O diretório de backup e os snapshots são restritos ao root. Mantenha também uma cópia cifrada fora deste servidor conforme a política do projeto; o snapshot na mesma máquina protege contra uma atualização incorreta, mas não contra perda do servidor.
+Antes de substituir uma versão, o instalador interrompe o serviço web, o timer e o worker de e-mail e copia **todo** o diretório de dados, incluindo o banco e possíveis arquivos WAL. Isso produz um snapshot consistente. O diretório de backup e os snapshots são restritos ao root. Mantenha também uma cópia cifrada fora deste servidor conforme a política do projeto; o snapshot na mesma máquina protege contra uma atualização incorreta, mas não contra perda do servidor.
 
 Para voltar ao código anterior, consulte `previous-release.txt` no backup da atualização, confirme que o esquema de dados é compatível e troque o symlink com o serviço parado:
 
 ```bash
-sudo systemctl stop univille-eventos
+sudo systemctl stop univille-notifications.timer univille-notifications.service univille-eventos
 sudo ln -sfn /opt/univille-eventos/releases/RELEASE_ANTERIOR /opt/univille-eventos/.current-next
 sudo mv -Tf /opt/univille-eventos/.current-next /opt/univille-eventos/current
 sudo systemctl start univille-eventos
 curl -fsS http://127.0.0.1:3002/api/health
 ```
 
-A reversão automática não restaura o banco, para não apagar solicitações criadas após a atualização. Uma restauração de dados exige avaliação do snapshot e das gravações posteriores, com o serviço parado.
+### Migração v2
+
+Na primeira inicialização desta versão, a migração SQLite adiciona `organizer`, `audienceCourseId`, `audienceSemester`, `submittedAt`, `queueSequence` e a sequência persistente de envios, mantendo contas, eventos, catálogos e auditoria. Ela é transacional e idempotente. A fila antiga é reconstruída pelo último `request.submitted`; pendentes precisam de envio após a última rejeição. Quando não existe essa evidência histórica, usa `updatedAt` e depois `createdAt` como aproximação documentada. Os próximos envios têm ordem persistida exata.
+
+Não há carga de eventos de exemplo ou substituição da base. Realização de registros antigos fica vazia até o preenchimento; o PPTX usa “—” quando ausente. A criação e o reenvio passam a exigir o campo. O esquema de notificações adiciona tabelas próprias sem apagar dados existentes.
+
+A reversão automática não restaura o banco, para não apagar solicitações criadas após a atualização. Uma restauração de dados exige avaliação do snapshot e das gravações posteriores, com serviço web, timer e worker parados. Antes de voltar a uma release anterior à migração v2, confirme sua compatibilidade com o esquema atual e com a regra de prioridade; não presuma que todo código antigo aplica as regras novas. Após restaurar o código, reative o timer somente se o SMTP estiver configurado e validado.
 
 Para devolver a página principal ao site anterior, restaure o **backup da primeira troca da raiz**, e não o de uma atualização posterior que já contenha o proxy:
 
 ```bash
 sudo python3 deploy/configure-nginx.py restore --backup /var/backups/univille-eventos/nginx-BACKUP_DA_PRIMEIRA_TROCA.conf
 curl -I https://flxpfu.com.br/
+sudo systemctl disable --now univille-notifications.timer
+sudo systemctl stop univille-notifications.service
 sudo systemctl disable --now univille-eventos
 ```
 

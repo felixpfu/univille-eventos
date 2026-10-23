@@ -1,0 +1,11 @@
+[Unit]
+Description=Processa as notificações da Agenda Univille a cada cinco minutos
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=15s
+Unit=univille-notifications.service
+
+[Install]
+WantedBy=timers.target

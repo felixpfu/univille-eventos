@@ -81,14 +81,25 @@ export function versionCheck(row, version) {
       "STALE_VERSION",
     );
 }
+const eventProjection = `e.*, t.name AS themeName, r.name AS roomName, c.name AS courseName,
+  cc.name AS costCenterName, ac.name AS audienceCourseName, u.name AS authorName`;
+const eventJoins = `LEFT JOIN themes t ON t.id=e.themeId LEFT JOIN rooms r ON r.id=e.roomId
+  LEFT JOIN courses c ON c.id=e.courseId LEFT JOIN costCenters cc ON cc.id=e.costCenterId
+  LEFT JOIN courses ac ON ac.id=e.audienceCourseId JOIN users u ON u.id=e.authorId`;
+function serializeEvent(row, resources) {
+  return {
+    ...row,
+    ceremony: row.ceremony == null ? null : Boolean(row.ceremony),
+    registration: row.registration == null ? null : Boolean(row.registration),
+    certificates: row.certificates == null ? null : Boolean(row.certificates),
+    resourceIds: resources.map((resource) => resource.id),
+    resourceNames: resources.map((resource) => resource.name),
+  };
+}
 export function getEvent(db, id) {
   const row = db
     .prepare(
-      `SELECT e.*, t.name AS themeName, r.name AS roomName, c.name AS courseName,
-    cc.name AS costCenterName, u.name AS authorName
-    FROM events e LEFT JOIN themes t ON t.id=e.themeId LEFT JOIN rooms r ON r.id=e.roomId
-    LEFT JOIN courses c ON c.id=e.courseId LEFT JOIN costCenters cc ON cc.id=e.costCenterId
-    JOIN users u ON u.id=e.authorId WHERE e.id=?`,
+      `SELECT ${eventProjection} FROM events e ${eventJoins} WHERE e.id=?`,
     )
     .get(id);
   if (!row) return null;
@@ -97,22 +108,33 @@ export function getEvent(db, id) {
       `SELECT r.id,r.name FROM resources r JOIN eventResources er ON er.resourceId=r.id WHERE er.eventId=? ORDER BY r.name`,
     )
     .all(id);
-  return {
-    ...row,
-    ceremony: row.ceremony == null ? null : Boolean(row.ceremony),
-    registration: row.registration == null ? null : Boolean(row.registration),
-    certificates: row.certificates == null ? null : Boolean(row.certificates),
-    resourceIds: resources.map((r) => r.id),
-    resourceNames: resources.map((r) => r.name),
-  };
+  return serializeEvent(row, resources);
 }
-export function eventList(db, where = "1=1", params = []) {
-  return db
+export function eventList(db, where = "1=1", params = [], queueOrder = false) {
+  // Filter the original events table before joining so existing predicates,
+  // including unqualified IDs, retain their meaning without ambiguous columns.
+  const rows = db
     .prepare(
-      `SELECT id FROM events WHERE ${where} ORDER BY date ASC,startTime ASC,createdAt DESC`,
+      `SELECT ${eventProjection} FROM (SELECT * FROM events WHERE ${where}) e ${eventJoins}
+      ORDER BY ${queueOrder ? "CASE WHEN e.status='pending' THEN 0 ELSE 1 END,CASE WHEN e.status='pending' THEN e.queueSequence END ASC," : ""}e.date ASC,e.startTime ASC,e.createdAt DESC`,
     )
-    .all(...params)
-    .map((row) => getEvent(db, row.id));
+    .all(...params);
+  if (!rows.length) return [];
+  const resourcesByEvent = new Map(rows.map((row) => [row.id, []]));
+  // SQLite builds have different variable limits. Batches of 900 also support
+  // the conservative 999-variable limit without one query per event.
+  for (let offset = 0; offset < rows.length; offset += 900) {
+    const ids = rows.slice(offset, offset + 900).map((row) => row.id);
+    const resources = db
+      .prepare(
+        `SELECT er.eventId,r.id,r.name FROM resources r JOIN eventResources er ON er.resourceId=r.id
+        WHERE er.eventId IN (${ids.map(() => "?").join(",")}) ORDER BY r.name`,
+      )
+      .all(...ids);
+    for (const resource of resources)
+      resourcesByEvent.get(resource.eventId).push(resource);
+  }
+  return rows.map((row) => serializeEvent(row, resourcesByEvent.get(row.id)));
 }
 export function metadata(db, full = true) {
   const result = {};
@@ -141,7 +163,7 @@ export function metadata(db, full = true) {
       description,
     }));
     result.resources = [];
-    result.courses = [];
+    result.courses = result.courses.map(({ id, name }) => ({ id, name }));
     result.costCenters = [];
   }
   return result;
@@ -154,11 +176,20 @@ const eventTextFields = [
   "requesterName",
   "speaker",
   "audience",
+  "organizer",
+  "audienceSemester",
   "justification",
   "objective",
   "notes",
 ];
-export function normalizeEvent(db, input, existing, complete, now) {
+export function normalizeEvent(
+  db,
+  input,
+  existing,
+  complete,
+  now,
+  { requireOrganizer = complete } = {},
+) {
   if (!input || typeof input !== "object" || Array.isArray(input))
     fail(400, "Dados da solicitação inválidos.", "VALIDATION_ERROR");
   const data = {};
@@ -170,12 +201,15 @@ export function normalizeEvent(db, input, existing, complete, now) {
         ? 5000
         : field === "name"
           ? 200
-          : 500,
+          : field === "audienceSemester"
+            ? 40
+            : 500,
     );
   for (const [field, table] of [
     ["themeId", "themes"],
     ["roomId", "rooms"],
     ["courseId", "courses"],
+    ["audienceCourseId", "courses"],
   ]) {
     const id = input[field] !== undefined ? input[field] : existing?.[field];
     data[field] = id === "" || id == null ? null : id;
@@ -232,7 +266,10 @@ export function normalizeEvent(db, input, existing, complete, now) {
     fields.endTime = "Horário inválido.";
   if (complete) {
     for (const field of [
-      ...eventTextFields.filter((x) => x !== "notes"),
+      ...eventTextFields.filter(
+        (x) => !["notes", "audienceSemester", "organizer"].includes(x),
+      ),
+      ...(requireOrganizer ? ["organizer"] : []),
       "themeId",
       "roomId",
       "courseId",
@@ -265,11 +302,45 @@ export function assertNoConflict(db, data, ignoreId = "") {
       "SCHEDULE_CONFLICT",
     );
 }
-export function saveEvent(db, data, { existing, authorId, status, now }) {
+export function assertFirstPending(db, event) {
+  const earlier = db
+    .prepare(
+      `SELECT id,queueSequence FROM events WHERE status='pending'
+    AND roomId=? AND date=? AND startTime<? AND endTime>?
+    AND queueSequence<? AND id<>? ORDER BY queueSequence ASC LIMIT 1`,
+    )
+    .get(
+      event.roomId,
+      event.date,
+      event.endTime,
+      event.startTime,
+      event.queueSequence,
+      event.id,
+    );
+  if (earlier)
+    fail(
+      409,
+      `Existe uma solicitação enviada antes para este ambiente e horário (protocolo ${earlier.id.slice(0, 8).toUpperCase()}). Analise esse pedido primeiro.`,
+      "EARLIER_REQUEST",
+      { earlierRequestId: earlier.id },
+    );
+}
+export function saveEvent(
+  db,
+  data,
+  { existing, authorId, status, now, requeue = false },
+) {
   const id = existing?.id || randomUUID();
   const at = timestamp(now);
   const flat = { ...data };
   delete flat.resourceIds;
+  if (requeue) {
+    const queue = db
+      .prepare("INSERT INTO submissionQueue(eventId,submittedAt) VALUES (?,?)")
+      .run(id, at);
+    flat.submittedAt = at;
+    flat.queueSequence = Number(queue.lastInsertRowid);
+  }
   for (const field of ["ceremony", "registration", "certificates"])
     flat[field] = flat[field] == null ? null : Number(flat[field]);
   if (existing) {
@@ -305,6 +376,14 @@ export function audit(db, actorId, action, entityId, now) {
 export function filteredReports(db, query) {
   const where = ["status<>'draft'"];
   const params = [];
+  if (query.status && query.status !== "all") {
+    if (
+      !["pending", "rejected", "approved", "cancelled"].includes(query.status)
+    )
+      fail(400, "Status inválido.", "VALIDATION_ERROR");
+    where.push("status=?");
+    params.push(query.status);
+  }
   for (const [field, operator] of [
     ["from", ">="],
     ["to", "<="],
@@ -341,10 +420,15 @@ export function reportCsv(events) {
     ["startTime", "Início"],
     ["endTime", "Fim"],
     ["themeName", "Tema"],
-    ["courseName", "Curso/coordenação"],
+    ["courseName", "Setor/curso"],
     ["costCenterName", "Centro de custo"],
     ["roomName", "Local"],
     ["requesterName", "Solicitante"],
+    ["audience", "Público alvo"],
+    ["audienceCourseName", "Curso do público"],
+    ["audienceSemester", "Semestre do público"],
+    ["speaker", "Palestrante/Ministrante"],
+    ["organizer", "Realização"],
     ["status", "Status"],
   ];
   const cell = (value) => {

@@ -61,9 +61,71 @@ export function openDatabase(path = databasePath()) {
       id INTEGER PRIMARY KEY, actorId TEXT REFERENCES users(id), action TEXT NOT NULL,
       entityId TEXT NOT NULL, createdAt TEXT NOT NULL
     );
-    PRAGMA user_version = 1;
   `);
+  migrateEventQueue(db);
   return db;
+}
+
+// Additive migration: published accounts, requests and audit history remain intact.
+function migrateEventQueue(db) {
+  if (db.prepare("PRAGMA user_version").get().user_version >= 2) return;
+  transaction(db, () => {
+    const columns = new Set(
+      db
+        .prepare("PRAGMA table_info(events)")
+        .all()
+        .map((row) => row.name),
+    );
+    for (const [name, definition] of [
+      ["organizer", "TEXT NOT NULL DEFAULT ''"],
+      ["audienceCourseId", "TEXT REFERENCES courses(id) ON DELETE RESTRICT"],
+      ["audienceSemester", "TEXT NOT NULL DEFAULT ''"],
+      ["submittedAt", "TEXT"],
+      ["queueSequence", "INTEGER"],
+    ]) {
+      if (!columns.has(name))
+        db.exec(`ALTER TABLE events ADD COLUMN ${name} ${definition}`);
+    }
+    db.exec(`CREATE TABLE IF NOT EXISTS submissionQueue (
+      sequence INTEGER PRIMARY KEY AUTOINCREMENT, eventId TEXT NOT NULL, submittedAt TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS events_pending_queue ON events(status,queueSequence);
+    CREATE UNIQUE INDEX IF NOT EXISTS events_queue_sequence ON events(queueSequence) WHERE queueSequence IS NOT NULL;`);
+    // Use the most recent actual send. Pending rows must have a send after their
+    // latest rejection. Legacy records without a matching audit use updatedAt,
+    // then createdAt, solely as an explicit migration fallback.
+    const historical = db
+      .prepare(
+        `SELECT e.id,e.updatedAt,e.createdAt,
+      (SELECT a.createdAt FROM auditLog a WHERE a.entityId=e.id AND a.action='request.submitted'
+        AND (e.status<>'pending' OR a.id>COALESCE((SELECT MAX(r.id) FROM auditLog r
+          WHERE r.entityId=e.id AND r.action IN ('request.rejected','request.rejectd')),0))
+        ORDER BY a.id DESC LIMIT 1) AS sentAt,
+      (SELECT MAX(a.id) FROM auditLog a WHERE a.entityId=e.id AND a.action='request.submitted') AS sendAuditId
+      FROM events e WHERE e.status<>'draft' AND e.queueSequence IS NULL`,
+      )
+      .all();
+    historical.sort(
+      (a, b) =>
+        (a.sentAt || a.updatedAt || a.createdAt).localeCompare(
+          b.sentAt || b.updatedAt || b.createdAt,
+        ) ||
+        (a.sendAuditId ?? 0) - (b.sendAuditId ?? 0) ||
+        a.id.localeCompare(b.id),
+    );
+    const insert = db.prepare(
+      "INSERT INTO submissionQueue(eventId,submittedAt) VALUES (?,?)",
+    );
+    const update = db.prepare(
+      "UPDATE events SET submittedAt=?,queueSequence=? WHERE id=?",
+    );
+    for (const row of historical) {
+      const at = row.sentAt || row.updatedAt || row.createdAt;
+      const result = insert.run(row.id, at);
+      update.run(at, Number(result.lastInsertRowid), row.id);
+    }
+    db.exec("PRAGMA user_version = 2");
+  });
 }
 
 export function transaction(db, callback) {

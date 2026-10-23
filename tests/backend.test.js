@@ -125,6 +125,7 @@ function eventData(catalogs, changes = {}) {
     requesterName: "Nome informado livremente",
     speaker: "Palestrante fictícia",
     audience: "Comunidade acadêmica",
+    organizer: "Curso fictício",
     justification: "Discussão acadêmica",
     objective: "Compartilhar conhecimento",
     ceremony: false,
@@ -472,7 +473,22 @@ test("Scheduling validates time/date/resources and atomically prevents conflicti
         .get().n,
       1,
     );
+    assert.equal(
+      simultaneous.find((result) => result.status === 200).data.request.id,
+      first.id,
+      "the first sent request must win, regardless of arrival order of approval requests",
+    );
     first = simultaneous.find((result) => result.status === 200).data.request;
+    assert.equal(
+      (
+        await f.request(`/requests/${second.id}/cancel`, {
+          method: "POST",
+          cookie: user.cookie,
+          body: { version: second.version },
+        })
+      ).status,
+      200,
+    );
     const overlap = await draft(
       f,
       user.cookie,
@@ -630,7 +646,19 @@ test("Catalog references and reports preserve exact filters, columns and CSV saf
       ).status,
       409,
     );
-    assert.equal((await f.request("/metadata")).data.courses.length, 0);
+    const publicCourses = (await f.request("/metadata")).data.courses;
+    assert.equal(publicCourses.length, 1);
+    assert.deepEqual(Object.keys(publicCourses[0]).sort(), ["id", "name"]);
+    assert.deepEqual(
+      (await f.request(`/events?courseId=${c.course.id}`)).data.events.map(
+        (e) => e.id,
+      ),
+      [approved.id],
+    );
+    assert.equal(
+      (await f.request("/events?courseId=unknown")).data.events.length,
+      0,
+    );
     assert.equal(
       (await f.request("/metadata", { cookie: user.cookie })).data.courses[0]
         .costCenterName,
@@ -939,6 +967,288 @@ test("Administrator CLI provisions through the current-release symlink used in p
       db.close();
     }
   } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Submission queue uses send order, survives ties and requeues only meaningful changes", async () => {
+  let instant = new Date("2026-10-23T15:00:00Z");
+  const f = await fixture({ now: () => instant });
+  try {
+    const c = await catalog(f);
+    const user = await register(f);
+    const oldDraft = await draft(
+      f,
+      user.cookie,
+      eventData(c, { name: "Rascunho antigo" }),
+    );
+    instant = new Date("2026-10-23T15:01:00Z");
+    let first = await submit(
+      f,
+      user.cookie,
+      await draft(f, user.cookie, eventData(c, { name: "Primeiro enviado" })),
+    );
+    let second = await submit(f, user.cookie, oldDraft);
+    assert.ok(oldDraft.createdAt < first.createdAt);
+    assert.equal(
+      first.submittedAt,
+      second.submittedAt,
+      "fixture deliberately submits in the same millisecond",
+    );
+    assert.ok(first.queueSequence < second.queueSequence);
+    assert.deepEqual(
+      (
+        await f.request("/admin/requests?status=pending", { cookie: f.admin })
+      ).data.requests.map((e) => e.id),
+      [first.id, second.id],
+    );
+    let blocked = await f.request(`/admin/requests/${second.id}/approve`, {
+      method: "POST",
+      cookie: f.admin,
+      body: { version: second.version },
+    });
+    assert.equal(blocked.status, 409);
+    assert.equal(blocked.data.code, "EARLIER_REQUEST");
+    assert.match(
+      blocked.data.error,
+      new RegExp(first.id.slice(0, 8).toUpperCase()),
+    );
+    const originalSequence = first.queueSequence;
+    const edited = await f.request(`/requests/${first.id}`, {
+      method: "PUT",
+      cookie: user.cookie,
+      body: { version: first.version, name: "Correção sem mudar a reserva" },
+    });
+    assert.equal(edited.status, 200);
+    first = edited.data.request;
+    assert.equal(first.queueSequence, originalSequence);
+    const moved = await f.request(`/requests/${first.id}`, {
+      method: "PUT",
+      cookie: user.cookie,
+      body: { version: first.version, startTime: "19:15" },
+    });
+    assert.equal(moved.status, 200);
+    first = moved.data.request;
+    assert.ok(first.queueSequence > second.queueSequence);
+    blocked = await f.request(`/admin/requests/${first.id}/approve`, {
+      method: "POST",
+      cookie: f.admin,
+      body: { version: first.version },
+    });
+    assert.equal(blocked.data.code, "EARLIER_REQUEST");
+    const rejected = await f.request(`/admin/requests/${second.id}/reject`, {
+      method: "POST",
+      cookie: f.admin,
+      body: { version: second.version, reason: "Ajustar justificativa" },
+    });
+    assert.equal(rejected.status, 200);
+    second = await submit(f, user.cookie, rejected.data.request);
+    assert.ok(
+      second.queueSequence > first.queueSequence,
+      "resubmission takes a new place in the queue",
+    );
+    first = await approve(f, first);
+    blocked = await f.request(`/admin/requests/${second.id}/approve`, {
+      method: "POST",
+      cookie: f.admin,
+      body: { version: second.version },
+    });
+    assert.equal(blocked.data.code, "SCHEDULE_CONFLICT");
+  } finally {
+    await f.close();
+  }
+});
+
+test("Organizer, audience details and report status filters are validated", async () => {
+  const f = await fixture();
+  try {
+    const c = await catalog(f);
+    const user = await register(f);
+    const incomplete = await draft(
+      f,
+      user.cookie,
+      eventData(c, { organizer: "" }),
+    );
+    const missing = await f.request(`/requests/${incomplete.id}/submit`, {
+      method: "POST",
+      cookie: user.cookie,
+      body: { version: incomplete.version },
+    });
+    assert.equal(missing.status, 400);
+    assert.equal(missing.data.fields.organizer, "Campo obrigatório.");
+    for (const changes of [
+      { audienceCourseId: "missing" },
+      { audienceSemester: "x".repeat(41) },
+    ]) {
+      assert.equal(
+        (
+          await f.request("/requests", {
+            method: "POST",
+            cookie: user.cookie,
+            body: eventData(c, changes),
+          })
+        ).status,
+        400,
+      );
+    }
+    const approved = await approve(
+      f,
+      await submit(
+        f,
+        user.cookie,
+        await draft(
+          f,
+          user.cookie,
+          eventData(c, {
+            audienceCourseId: c.course.id,
+            audienceSemester: " 3º semestre ",
+          }),
+        ),
+      ),
+    );
+    assert.equal(approved.audienceCourseName, c.course.name);
+    assert.equal(approved.audienceSemester, "3º semestre");
+    await submit(
+      f,
+      user.cookie,
+      await draft(f, user.cookie, eventData(c, { date: "2026-10-25" })),
+    );
+    assert.equal(
+      (await f.request("/admin/reports?status=approved", { cookie: f.admin }))
+        .data.events.length,
+      1,
+    );
+    assert.equal(
+      (await f.request("/admin/reports?status=pending", { cookie: f.admin }))
+        .data.events.length,
+      1,
+    );
+    assert.equal(
+      (await f.request("/admin/reports?status=draft", { cookie: f.admin }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (await f.request("/admin/agenda.pptx", { cookie: f.admin })).status,
+      400,
+    );
+    assert.equal(
+      (
+        await f.request("/admin/agenda.pptx?from=2026-10-24&to=2026-10-23", {
+          cookie: f.admin,
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await f.request("/admin/agenda.pptx?from=2026-10-24&to=2026-10-25", {
+          cookie: user.cookie,
+        })
+      ).status,
+      403,
+    );
+    const ppt = await f.request(
+      "/admin/agenda.pptx?from=2026-10-24&to=2026-10-25&status=pending",
+      { cookie: f.admin },
+    );
+    assert.equal(ppt.status, 200);
+    assert.match(
+      ppt.headers.get("content-type"),
+      /presentationml.presentation/,
+    );
+    assert.match(ppt.headers.get("content-disposition"), /\.pptx/);
+    assert.ok(ppt.data.startsWith("PK"));
+  } finally {
+    await f.close();
+  }
+});
+
+test("Version 1 migration preserves requests and reconstructs last actual send order idempotently", () => {
+  const directory = mkdtempSync(join(tmpdir(), "univille-migration-"));
+  const dbPath = join(directory, "events.sqlite");
+  let db = openDatabase(dbPath);
+  try {
+    db.exec(`INSERT INTO users(id,name,email,passwordHash,role,createdAt) VALUES ('owner','Legacy owner','legacy@example.test','dummy','requester','2026-10-01T10:00:00.000Z');
+      DROP INDEX events_pending_queue; DROP INDEX events_queue_sequence;
+      DROP TABLE submissionQueue;`);
+    for (const column of [
+      "organizer",
+      "audienceCourseId",
+      "audienceSemester",
+      "submittedAt",
+      "queueSequence",
+    ])
+      db.exec(`ALTER TABLE events DROP COLUMN ${column}`);
+    db.exec("PRAGMA user_version=1");
+    const add = db.prepare(
+      "INSERT INTO events(id,authorId,name,status,createdAt,updatedAt) VALUES (?,'owner',?,'pending',?,?)",
+    );
+    add.run(
+      "old-draft",
+      "Rascunho antigo enviado depois",
+      "2026-10-01T10:00:00.000Z",
+      "2026-10-20T10:00:00.000Z",
+    );
+    add.run(
+      "first-send",
+      "Primeiro envio",
+      "2026-10-10T10:00:00.000Z",
+      "2026-10-22T10:00:00.000Z",
+    );
+    add.run(
+      "resent",
+      "Reenvio",
+      "2026-10-01T10:00:00.000Z",
+      "2026-10-21T10:00:00.000Z",
+    );
+    add.run(
+      "missing-audit",
+      "Sem auditoria histórica",
+      "2026-10-01T10:00:00.000Z",
+      "2026-10-22T10:00:00.000Z",
+    );
+    const audit = db.prepare(
+      "INSERT INTO auditLog(action,entityId,createdAt) VALUES (?,?,?)",
+    );
+    audit.run("request.submitted", "resent", "2026-10-02T10:00:00.000Z");
+    audit.run("request.submitted", "first-send", "2026-10-10T10:00:00.000Z");
+    audit.run("request.submitted", "old-draft", "2026-10-20T10:00:00.000Z");
+    audit.run("request.rejectd", "resent", "2026-10-20T11:00:00.000Z");
+    audit.run("request.submitted", "resent", "2026-10-21T10:00:00.000Z");
+    db.close();
+    db = openDatabase(dbPath);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 2);
+    const rows = db
+      .prepare(
+        "SELECT id,name,submittedAt,queueSequence,organizer FROM events ORDER BY queueSequence",
+      )
+      .all();
+    assert.deepEqual(
+      rows.map((e) => e.id),
+      ["first-send", "old-draft", "resent", "missing-audit"],
+    );
+    assert.equal(
+      rows[0].submittedAt,
+      "2026-10-10T10:00:00.000Z",
+      "last edit must not change historical send order",
+    );
+    assert.equal(rows[2].submittedAt, "2026-10-21T10:00:00.000Z");
+    assert.ok(rows.every((e) => e.organizer === ""));
+    assert.equal(db.prepare("SELECT count(*) AS n FROM users").get().n, 1);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM auditLog").get().n, 5);
+    db.close();
+    db = openDatabase(dbPath);
+    assert.deepEqual(
+      db
+        .prepare(
+          "SELECT id,name,submittedAt,queueSequence,organizer FROM events ORDER BY queueSequence",
+        )
+        .all(),
+      rows,
+    );
+  } finally {
+    db.close();
     rmSync(directory, { recursive: true, force: true });
   }
 });

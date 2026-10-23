@@ -4,6 +4,12 @@ import { randomUUID } from "node:crypto";
 import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
 import { openDatabase, transaction } from "./db.js";
+import { generateAgendaPptx } from "./presentation.js";
+import {
+  initNotificationSchema,
+  registerNotificationRoutes,
+  enqueueEventNotifications,
+} from "./notifications.js";
 import {
   hashPassword,
   verifyPassword,
@@ -27,6 +33,7 @@ import {
   eventList,
   normalizeEvent,
   assertNoConflict,
+  assertFirstPending,
   saveEvent,
   versionCheck,
   audit,
@@ -37,6 +44,7 @@ import {
 export function createApp(options = {}) {
   const app = express();
   const db = openDatabase(options.dbPath);
+  initNotificationSchema(db);
   app.locals.db = db;
   const now = options.now || (() => new Date());
   const production =
@@ -291,15 +299,21 @@ export function createApp(options = {}) {
     });
     res.json({ user: publicUser(req.user) });
   });
+  registerNotificationRoutes(api, { db, auth, now, publicOrigin, rateLimit });
   api.get("/metadata", (req, res) =>
     res.json(metadata(db, ["requester", "admin"].includes(req.user?.role))),
   );
   api.get("/events", (req, res) => {
     const { start, end } = publicWindow(now);
-    const events = eventList(db, "status='approved' AND date>=? AND date<?", [
-      start,
-      end,
-    ]).map((event) => ({
+    const where = ["status='approved'", "date>=?", "date<?"];
+    const params = [start, end];
+    if (req.query.courseId) {
+      if (typeof req.query.courseId !== "string")
+        fail(400, "Filtro de setor/curso inválido.", "VALIDATION_ERROR");
+      where.push("courseId=?");
+      params.push(req.query.courseId);
+    }
+    const events = eventList(db, where.join(" AND "), params).map((event) => ({
       id: event.id,
       name: event.name,
       themeId: event.themeId,
@@ -310,6 +324,9 @@ export function createApp(options = {}) {
       roomId: event.roomId,
       roomName: event.roomName,
       speaker: event.speaker,
+      courseId: event.courseId,
+      courseName: event.courseName,
+      organizer: event.organizer,
     }));
     res.json({ events });
   });
@@ -364,7 +381,14 @@ export function createApp(options = {}) {
         existing: current,
         status: current.status,
         now,
+        requeue:
+          current.status === "pending" &&
+          ["date", "startTime", "endTime", "roomId"].some(
+            (field) => data[field] !== current[field],
+          ),
       });
+      if (result.status === "approved")
+        enqueueEventNotifications(db, result, { now });
       audit(db, req.user.id, "request.edited", current.id, now);
       return result;
     });
@@ -401,6 +425,7 @@ export function createApp(options = {}) {
         existing: current,
         status: "pending",
         now,
+        requeue: true,
       });
       audit(db, req.user.id, "request.submitted", current.id, now);
       return result;
@@ -434,8 +459,8 @@ export function createApp(options = {}) {
       fail(400, "Status inválido.", "VALIDATION_ERROR");
     res.json({
       requests: req.query.status
-        ? eventList(db, "status=?", [req.query.status])
-        : eventList(db, "status<>'draft'"),
+        ? eventList(db, "status=?", [req.query.status], true)
+        : eventList(db, "status<>'draft'", [], true),
     });
   });
   for (const action of ["approve", "reject"])
@@ -460,8 +485,13 @@ export function createApp(options = {}) {
               )
             : "";
         if (action === "approve") {
-          const data = normalizeEvent(db, {}, current, true, now);
+          // Older pending requests can be approved without inventing a missing
+          // organizer; every new send and later edit requires that field.
+          const data = normalizeEvent(db, {}, current, true, now, {
+            requireOrganizer: false,
+          });
           assertNoConflict(db, data, current.id);
+          assertFirstPending(db, current);
         }
         db.prepare(
           "UPDATE events SET status=?,rejectionReason=?,version=version+1,updatedAt=? WHERE id=?",
@@ -471,8 +501,17 @@ export function createApp(options = {}) {
           timestamp(now),
           current.id,
         );
-        audit(db, req.user.id, `request.${action}d`, current.id, now);
-        return getEvent(db, current.id);
+        audit(
+          db,
+          req.user.id,
+          action === "approve" ? "request.approved" : "request.rejected",
+          current.id,
+          now,
+        );
+        const result = getEvent(db, current.id);
+        if (action === "approve")
+          enqueueEventNotifications(db, result, { now });
+        return result;
       });
       res.json({ request });
     });
@@ -485,6 +524,29 @@ export function createApp(options = {}) {
       .attachment("eventos-univille.csv")
       .send(reportCsv(filteredReports(db, req.query))),
   );
+  api.get("/admin/agenda.pptx", admin, async (req, res) => {
+    if (!req.query.from || !req.query.to)
+      fail(
+        400,
+        "Selecione as datas inicial e final da agenda.",
+        "VALIDATION_ERROR",
+      );
+    const period = req.query.period || "week";
+    if (!["week", "year", "custom"].includes(period))
+      fail(400, "Tipo de período inválido.", "VALIDATION_ERROR");
+    const events = filteredReports(db, { ...req.query, status: "approved" });
+    const presentation = await generateAgendaPptx(events, {
+      from: req.query.from,
+      to: req.query.to,
+      period,
+    });
+    res
+      .type(
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      )
+      .attachment(`agenda-univille-${req.query.from}-${req.query.to}.pptx`)
+      .send(presentation);
+  });
   installCatalogRoutes(api, db, admin, now);
   installUserRoutes(api, db, admin, now, recheckAdmin);
   api.use((req, res, next) =>

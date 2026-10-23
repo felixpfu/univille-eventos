@@ -37,6 +37,8 @@ import {
   Trash2,
   Pencil,
   Info,
+  Bell,
+  Mail,
 } from "lucide-react";
 import Admin from "./Admin.jsx";
 import "./styles.css";
@@ -76,6 +78,9 @@ const blank = () => ({
   requesterName: "",
   speaker: "",
   audience: "",
+  organizer: "",
+  audienceCourseId: "",
+  audienceSemester: "",
   justification: "",
   objective: "",
   ceremony: null,
@@ -118,17 +123,14 @@ function IconButton({ children, label, ...props }) {
 function Brand() {
   return (
     <div className="brand">
-      <div className="brand-mark" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-      </div>
-      <div>
-        <strong>
-          univille<span className="brand-dot">.</span>
-        </strong>
-        <small>AGENDA DE EVENTOS</small>
-      </div>
+      <img
+        className="official-logo"
+        src={`${import.meta.env.BASE_URL}branding/univille-logo.png`}
+        alt="Univille"
+        width="221"
+        height="50"
+      />
+      <span className="brand-caption">Agenda de eventos</span>
     </div>
   );
 }
@@ -216,6 +218,7 @@ function App() {
     [events, setEvents] = useState([]),
     [requests, setRequests] = useState([]),
     [modal, setModal] = useState(null),
+    [emailAction, setEmailAction] = useState(readEmailAction),
     [selected, setSelected] = useState(null),
     [afterSave, setAfterSave] = useState(null),
     [toast, setToast] = useState(null),
@@ -225,6 +228,11 @@ function App() {
       () => localStorage.getItem("univille-theme") || "light",
     );
   const notify = (message, type = "success") => setToast({ message, type });
+  useEffect(() => {
+    const read = () => setEmailAction(readEmailAction());
+    window.addEventListener("hashchange", read);
+    return () => window.removeEventListener("hashchange", read);
+  }, []);
   useEffect(() => {
     const expired = () => {
       setUser(null);
@@ -320,120 +328,46 @@ function App() {
       <a className="skip-link" href="#main">
         Ir para o conteúdo
       </a>
-      <aside className="sidebar">
-        <button
-          className="brand-button"
-          onClick={() => navigate("agenda")}
-          aria-label="Página inicial"
-        >
-          <Brand />
-        </button>
-        <div className="nav-label">EXPLORAR</div>
-        <nav aria-label="Navegação principal">
+      <header className="site-header">
+        <div className="header-inner">
           <button
-            className={page === "agenda" ? "nav-item active" : "nav-item"}
+            className="brand-button"
             onClick={() => navigate("agenda")}
+            aria-label="Página inicial"
           >
-            <CalendarDays size={20} />
-            <span>Agenda de eventos</span>
-            {page === "agenda" && <span className="nav-dot" />}
+            <Brand />
           </button>
-          <button
-            className={page === "spaces" ? "nav-item active" : "nav-item"}
-            onClick={() => navigate("spaces")}
-          >
-            <Building2 size={20} />
-            <span>Espaços</span>
-          </button>
-          {requester && (
-            <>
-              <div className="nav-label nav-label-spaced">MINHA ÁREA</div>
+          <nav className="header-nav" aria-label="Navegação principal">
+            <button
+              className={page === "agenda" ? "active" : ""}
+              onClick={() => navigate("agenda")}
+            >
+              Eventos
+            </button>
+            <button
+              className={page === "spaces" ? "active" : ""}
+              onClick={() => navigate("spaces")}
+            >
+              Espaços
+            </button>
+            {requester && (
               <button
-                className={page === "requests" ? "nav-item active" : "nav-item"}
+                className={page === "requests" ? "active" : ""}
                 onClick={() => navigate("requests")}
               >
-                <FileText size={20} />
-                <span>Minhas solicitações</span>
+                Minhas solicitações
               </button>
-            </>
-          )}
-          {user?.role === "admin" && (
-            <button
-              className={page === "admin" ? "nav-item active" : "nav-item"}
-              onClick={() => navigate("admin")}
-            >
-              <ShieldCheck size={20} />
-              <span>Administração</span>
-            </button>
-          )}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="tiny-dot" /> Encontros que conectam.
-            <p>
-              Um espaço para compartilhar
-              <br />
-              conhecimento e novas ideias.
-            </p>
-          </div>
-          {user ? (
-            <div className="profile">
+            )}
+            {user?.role === "admin" && (
               <button
-                className="profile-main"
-                onClick={() => setModal("password")}
-                title="Alterar senha"
+                className={page === "admin" ? "active" : ""}
+                onClick={() => navigate("admin")}
               >
-                <span className="avatar">
-                  {user.name.slice(0, 1).toUpperCase()}
-                </span>
-                <span>
-                  <strong>{user.name}</strong>
-                  <small>
-                    {user.role === "admin"
-                      ? "Administrador"
-                      : user.role === "requester"
-                        ? "Solicitante"
-                        : "Visitante"}
-                  </small>
-                </span>
+                Administração
               </button>
-              <IconButton label="Sair" onClick={logout}>
-                <LogOut size={18} />
-              </IconButton>
-            </div>
-          ) : (
-            <div className="visitor">
-              <span className="avatar">
-                <UserRound size={18} />
-              </span>
-              <span>
-                <strong>Acesso público</strong>
-                <small>Você está como visitante</small>
-              </span>
-            </div>
-          )}
-        </div>
-      </aside>
-      <div className="app-shell">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>Universidade</span>
-            <ChevronRight size={13} />
-            <strong>
-              {page === "agenda"
-                ? "Agenda de eventos"
-                : page === "spaces"
-                  ? "Espaços"
-                  : page === "admin"
-                    ? "Administração"
-                    : "Minhas solicitações"}
-            </strong>
-          </div>
-          <div className="topbar-actions">
-            <span className="campus">
-              <span className="tiny-dot" /> Joinville · SC
-            </span>
-            <span className="topbar-divider" />
+            )}
+          </nav>
+          <div className="header-actions">
             <IconButton
               label={
                 theme === "light" ? "Ativar modo escuro" : "Ativar modo claro"
@@ -444,24 +378,45 @@ function App() {
             >
               {theme === "light" ? <Moon size={19} /> : <Sun size={19} />}
             </IconButton>
-            {!user ? (
-              <button
-                className="button button-login"
-                onClick={() => setModal("login")}
+            {user && (
+              <IconButton
+                label="Preferências de e-mail"
+                onClick={() => setModal("notifications")}
               >
-                Entrar <ArrowUpRight size={16} />
+                <Bell size={18} />
+              </IconButton>
+            )}
+            <span className="role-pill">
+              <UserRound size={14} />
+              {user?.role === "admin"
+                ? "Administrador"
+                : user?.role === "requester"
+                  ? "Solicitante"
+                  : "Visitante"}
+            </span>
+            {user ? (
+              <button
+                className="button account-button"
+                onClick={() => setModal("password")}
+              >
+                <span className="avatar">
+                  {user.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span>{user.name.split(" ")[0]}</span>
               </button>
             ) : (
               <button
-                className="button button-login"
-                onClick={() => setModal("password")}
+                className="button primary"
+                onClick={() => setModal("login")}
               >
-                <UserRound size={16} />
-                <span>Minha conta</span>
+                <LogIn size={15} />
+                Entrar
               </button>
             )}
           </div>
-        </header>
+        </div>
+      </header>
+      <div className="app-shell">
         <main id="main" className="main-content">
           {loadError && (
             <div className="error-banner" role="alert">
@@ -479,6 +434,7 @@ function App() {
               metadata={metadata}
               loading={loading}
               onRequest={startRequest}
+              onNotifications={() => setModal(user ? "notifications" : "login")}
             />
           ) : page === "spaces" ? (
             <Spaces metadata={metadata} onRequest={startRequest} />
@@ -507,7 +463,7 @@ function App() {
               © {new Date().getFullYear()} Agenda Univille{" "}
               <span className="footer-dot">·</span> Projeto acadêmico · !Null
             </span>
-            <span>Conhecimento que reúne.</span>
+            <span>Campus São Bento do Sul · SC</span>
           </footer>
         </main>
       </div>
@@ -548,6 +504,27 @@ function App() {
           notify={notify}
         />
       )}
+      {modal === "notifications" && user && (
+        <NotificationModal
+          metadata={metadata}
+          onClose={() => setModal(null)}
+          notify={notify}
+        />
+      )}
+      {emailAction && (
+        <EmailActionModal
+          action={emailAction}
+          notify={notify}
+          onClose={() => {
+            setEmailAction(null);
+            window.history.replaceState(
+              null,
+              "",
+              window.location.pathname + window.location.search,
+            );
+          }}
+        />
+      )}
       {toast && (
         <div className={`toast ${toast.type}`} role="status">
           {toast.type === "error" ? (
@@ -564,201 +541,176 @@ function App() {
     </>
   );
 }
-function Agenda({ events, metadata, onRequest, loading }) {
-  const now = today().split("-").map(Number),
-    [monthOffset, setMonthOffset] = useState(0),
-    [view, setView] = useState("list"),
+function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
+  const now = today().split("-").map(Number);
+  const [monthOffset, setMonthOffset] = useState(0),
+    [view, setView] = useState("calendar"),
     [search, setSearch] = useState(""),
     [themeId, setThemeId] = useState(""),
     [roomId, setRoomId] = useState(""),
+    [courseId, setCourseId] = useState(""),
     [filters, setFilters] = useState(false),
     [day, setDay] = useState("");
   const date = new Date(now[0], now[1] - 1 + monthOffset, 1),
     month = date.getMonth(),
     year = date.getFullYear(),
     prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
-  const filtered = events.filter(
+  const matching = events.filter(
     (e) =>
-      e.date?.startsWith(prefix) &&
-      (!day || e.date === day) &&
       (!themeId || e.themeId === themeId) &&
       (!roomId || e.roomId === roomId) &&
+      (!courseId || e.courseId === courseId) &&
       (!search ||
-        [e.name, e.speaker, e.themeName, e.roomName]
+        [e.name, e.speaker, e.themeName, e.roomName, e.courseName, e.organizer]
           .join(" ")
-          .toLocaleLowerCase()
-          .includes(search.toLocaleLowerCase())),
+          .toLocaleLowerCase("pt-BR")
+          .includes(search.toLocaleLowerCase("pt-BR"))),
   );
-  const totalMonth = events.filter((e) => e.date?.startsWith(prefix)).length;
+  const monthEvents = matching.filter((e) => e.date.startsWith(prefix));
+  const visible = (view === "calendar" ? monthEvents : matching).filter(
+    (e) => !day || e.date === day,
+  );
+  const hasFilters = search || themeId || roomId || courseId || day;
   return (
     <>
-      <div className="page-heading">
+      <div className="page-heading agenda-heading">
         <div>
-          <span className="eyebrow">
-            <span className="tiny-dot" /> CAMPUS EM MOVIMENTO
-          </span>
-          <h1>
-            Boas ideias merecem
-            <br />
-            um lugar na agenda<span className="green-text">.</span>
-          </h1>
-          <p>Explore os próximos encontros da nossa comunidade.</p>
+          <span className="eyebrow">UNIVILLE · CAMPUS SÃO BENTO DO SUL</span>
+          <h1>Próximos eventos</h1>
+          <p>
+            Confira os encontros aprovados para este mês e os dois próximos.
+            <br className="desktop-break" /> Conhecimento, experiências e novas
+            conexões em um só lugar.
+          </p>
         </div>
-        <button className="button primary hero-button" onClick={onRequest}>
-          Solicitar um evento <ArrowUpRight size={18} />
+        <button className="button primary" onClick={onRequest}>
+          <Plus size={17} /> Solicitar evento
         </button>
       </div>
-      <section className="overview" aria-label="Resumo da agenda">
-        <div className="month-feature">
-          <div className="feature-top">
-            <span>AGENDA ABERTA</span>
-            <CalendarRange size={25} strokeWidth={1.3} />
+      <section
+        className="agenda-board"
+        aria-label="Agenda de eventos aprovados"
+      >
+        <div className="agenda-board-top">
+          <div className="view-switch" aria-label="Visualização da agenda">
+            <button
+              className={view === "calendar" ? "selected" : ""}
+              aria-pressed={view === "calendar"}
+              onClick={() => {
+                setView("calendar");
+                setDay("");
+              }}
+            >
+              <CalendarDays size={17} />
+              Calendário
+            </button>
+            <button
+              className={view === "list" ? "selected" : ""}
+              aria-pressed={view === "list"}
+              onClick={() => {
+                setView("list");
+                setDay("");
+              }}
+            >
+              <List size={17} />
+              Lista
+            </button>
           </div>
-          <div className="feature-bottom">
-            <h2>
-              {MONTHS[month]}
-              <span>{year}</span>
-            </h2>
-            <span className="feature-number">
-              {String(totalMonth).padStart(2, "0")}
-              <small>
-                {totalMonth === 1 ? "evento aprovado" : "eventos aprovados"}
-              </small>
-            </span>
-          </div>
-          <div className="feature-orbit" aria-hidden="true" />
-        </div>
-        <div className="overview-note">
-          <span className="overview-icon">
-            <Users size={23} strokeWidth={1.4} />
+          <span className="agenda-window-label">
+            {events.length}{" "}
+            {events.length === 1 ? "evento aprovado" : "eventos aprovados"} ·
+            próximos 3 meses
           </span>
-          <h3>
-            Encontros para
-            <br />
-            ir além da sala de aula.
-          </h3>
-          <p>
-            Palestras, conversas e experiências
-            <br />
-            que aproximam pessoas e ideias.
-          </p>
-          <div className="overview-note-footer">
-            <span>Faça parte do próximo encontro</span>
-            <ArrowUpRight size={19} />
-          </div>
         </div>
-        <div className="overview-window">
-          <div className="small-label">NO HORIZONTE</div>
-          <div className="window-months">
+        {view === "calendar" && (
+          <div className="agenda-month-tabs" aria-label="Meses da agenda">
             {Array.from({ length: 3 }, (_, i) => {
-              const dt = new Date(now[0], now[1] - 1 + i, 1);
+              const d = new Date(now[0], now[1] - 1 + i, 1);
               return (
                 <button
                   key={i}
-                  className={
-                    monthOffset === i ? "window-month selected" : "window-month"
-                  }
+                  className={i === monthOffset ? "selected" : ""}
+                  aria-pressed={i === monthOffset}
                   onClick={() => {
                     setMonthOffset(i);
                     setDay("");
                   }}
                 >
-                  <span>
-                    {dt
-                      .toLocaleDateString("pt-BR", { month: "short" })
-                      .replace(".", "")}
-                  </span>
-                  <span className="window-count">
-                    {
-                      events.filter((e) =>
-                        e.date?.startsWith(
-                          `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`,
-                        ),
-                      ).length
-                    }
-                  </span>
+                  {MONTHS[d.getMonth()]} <small>{d.getFullYear()}</small>
                 </button>
               );
             })}
           </div>
-          <p>
-            Eventos aprovados deste mês
-            <br />e dos próximos dois meses.
-          </p>
-        </div>
-      </section>
-      <section className="agenda-section">
-        <div className="section-heading">
-          <div>
-            <span className="eyebrow">DESCUBRA E PARTICIPE</span>
-            <h2>
-              Próximos eventos{" "}
-              <span className="count-pill">{filtered.length}</span>
-            </h2>
-          </div>
-          <div className="view-switch" aria-label="Visualização da agenda">
-            <button
-              className={view === "list" ? "selected" : ""}
-              aria-label="Visualização em lista"
-              aria-pressed={view === "list"}
-              onClick={() => setView("list")}
-            >
-              <List size={17} /> Lista
-            </button>
-            <button
-              className={view === "calendar" ? "selected" : ""}
-              aria-label="Visualização em calendário"
-              aria-pressed={view === "calendar"}
-              onClick={() => setView("calendar")}
-            >
-              <CalendarDays size={16} /> Calendário
-            </button>
-          </div>
-        </div>
+        )}
         <div className="agenda-toolbar">
           <div className="month-selector">
-            <h3>
-              {MONTHS[month]} <span>{year}</span>
-            </h3>
-            <div>
-              <IconButton
-                label="Mês anterior"
-                disabled={monthOffset === 0}
-                onClick={() => {
-                  setMonthOffset((x) => x - 1);
-                  setDay("");
-                }}
-              >
-                <ChevronLeft size={18} />
-              </IconButton>
-              <IconButton
-                label="Próximo mês"
-                disabled={monthOffset === 2}
-                onClick={() => {
-                  setMonthOffset((x) => x + 1);
-                  setDay("");
-                }}
-              >
-                <ChevronRight size={18} />
-              </IconButton>
-            </div>
+            <h2>
+              {view === "calendar" ? (
+                <>
+                  {MONTHS[month]} <span>{year}</span>
+                </>
+              ) : (
+                "Agenda dos próximos três meses"
+              )}
+            </h2>
+            {view === "calendar" && (
+              <div>
+                <IconButton
+                  label="Mês anterior"
+                  disabled={monthOffset === 0}
+                  onClick={() => {
+                    setMonthOffset((x) => x - 1);
+                    setDay("");
+                  }}
+                >
+                  <ChevronLeft size={18} />
+                </IconButton>
+                <IconButton
+                  label="Próximo mês"
+                  disabled={monthOffset === 2}
+                  onClick={() => {
+                    setMonthOffset((x) => x + 1);
+                    setDay("");
+                  }}
+                >
+                  <ChevronRight size={18} />
+                </IconButton>
+              </div>
+            )}
           </div>
           <div className="agenda-tools">
             <label className="search-field">
               <Search size={16} />
               <input
-                placeholder="Buscar evento"
                 aria-label="Buscar evento"
+                placeholder="Buscar evento"
+                maxLength={200}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </label>
+            <label className="sector-filter">
+              <span className="sr-only">Filtrar por setor / curso</span>
+              <select
+                aria-label="Filtrar por setor / curso"
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+              >
+                <option value="">Todos os setores / cursos</option>
+                {metadata.courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               className={`button filter-button ${filters ? "selected" : ""}`}
-              onClick={() => setFilters((x) => !x)}
               aria-expanded={filters}
+              onClick={() => setFilters((x) => !x)}
             >
-              <SlidersHorizontal size={16} /> Filtros{" "}
+              <SlidersHorizontal size={16} />
+              <span>Filtros</span>
               {(themeId || roomId) && <span className="tiny-dot" />}
             </button>
           </div>
@@ -773,7 +725,7 @@ function Agenda({ events, metadata, onRequest, loading }) {
               >
                 <option value="">Todos os temas</option>
                 {metadata.themes.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <option value={t.id} key={t.id}>
                     {t.name}
                   </option>
                 ))}
@@ -785,9 +737,9 @@ function Agenda({ events, metadata, onRequest, loading }) {
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
               >
-                <option value="">Todos os espaços</option>
+                <option value="">Todos os ambientes</option>
                 {metadata.rooms.map((t) => (
-                  <option key={t.id} value={t.id}>
+                  <option value={t.id} key={t.id}>
                     {t.name}
                   </option>
                 ))}
@@ -798,6 +750,7 @@ function Agenda({ events, metadata, onRequest, loading }) {
               onClick={() => {
                 setThemeId("");
                 setRoomId("");
+                setCourseId("");
                 setSearch("");
                 setDay("");
               }}
@@ -810,111 +763,146 @@ function Agenda({ events, metadata, onRequest, loading }) {
           <Calendar
             month={month}
             year={year}
-            events={events.filter((e) => e.date?.startsWith(prefix))}
+            events={monthEvents}
             day={day}
             setDay={setDay}
           />
         )}
-        {day && (
-          <div className="active-day">
-            Eventos de {dateFormat(day)}
+        <div className="list-section-heading">
+          <h3>
+            {day
+              ? `Eventos de ${dateFormat(day)}`
+              : view === "calendar"
+                ? "Encontros deste mês"
+                : "Todos os encontros"}
+          </h3>
+          {day ? (
             <button className="text-button" onClick={() => setDay("")}>
-              Ver mês completo <X size={13} />
+              Ver mês completo <X size={14} />
             </button>
-          </div>
-        )}
+          ) : (
+            <span className="count-pill">{visible.length}</span>
+          )}
+        </div>
         {loading ? (
-          <div className="loading-state">Atualizando eventos…</div>
-        ) : filtered.length ? (
+          <div className="loading-state">
+            <LoaderCircle className="spin" size={19} />
+            Atualizando eventos…
+          </div>
+        ) : visible.length ? (
           <div className="event-list">
-            {filtered.map((event) => (
+            {visible.map((event) => (
               <EventRow key={event.id} event={event} />
             ))}
           </div>
         ) : (
           <div className="public-empty">
-            <div className="empty-calendar">
-              <CalendarDays size={28} strokeWidth={1.4} />
-              <span className="empty-calendar-dot" />
-            </div>
+            <CalendarDays size={30} strokeWidth={1.2} />
             <h3>
-              {search || themeId || roomId || day
-                ? "Nenhum evento encontrado"
-                : "A agenda está pronta para novos encontros."}
+              {hasFilters
+                ? "Nenhum evento encontrado."
+                : "Novos encontros vão aparecer por aqui."}
             </h3>
             <p>
-              {search || themeId || roomId || day
-                ? "Experimente outros filtros para encontrar um evento."
-                : "Assim que um evento for aprovado, ele aparecerá aqui."}
+              {hasFilters
+                ? "Experimente outro período ou ajuste os filtros."
+                : "Os eventos são publicados assim que a administração os aprova."}
             </p>
-            {!(search || themeId || roomId || day) && (
+            {!hasFilters && (
               <button className="text-button" onClick={onRequest}>
-                Que tal começar uma ideia? <ArrowRight size={15} />
+                Propor um evento <ArrowRight size={15} />
               </button>
             )}
           </div>
         )}
         <div className="agenda-footnote">
           <ShieldCheck size={14} />
-          <span>Somente eventos aprovados são publicados nesta agenda.</span>
+          <span>
+            Somente eventos aprovados. Os horários seguem o fuso de Brasília.
+          </span>
         </div>
       </section>
-      <section className="bottom-cta">
-        <div className="cta-symbol">
-          <CalendarDays size={25} strokeWidth={1.4} />
-        </div>
+      <div className="notification-invite">
         <div>
-          <h3>Tem um encontro em mente?</h3>
-          <p>Envie sua solicitação e acompanhe cada etapa em um só lugar.</p>
+          <Bell size={19} />
+          <span>Quer receber as novidades da agenda?</span>
         </div>
-        <button className="button" onClick={onRequest}>
-          Começar uma solicitação <ArrowUpRight size={17} />
+        <button className="text-button" onClick={onNotifications}>
+          Preferências de e-mail <ArrowRight size={15} />
         </button>
-      </section>
+      </div>
     </>
   );
 }
 function Calendar({ month, year, events, day, setDay }) {
   const total = new Date(year, month + 1, 0).getDate(),
-    start = new Date(year, month, 1).getDay();
+    start = new Date(year, month, 1).getDay(),
+    padding = (7 - ((total + start) % 7)) % 7;
   return (
-    <div className="calendar-grid" aria-label="Calendário de eventos">
+    <div
+      className="calendar-grid"
+      aria-label={`Calendário de ${MONTHS[month]} de ${year}`}
+    >
       {["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].map((d) => (
         <div className="calendar-weekday" key={d}>
           {d}
         </div>
       ))}
       {Array.from({ length: start }, (_, i) => (
-        <div className="calendar-blank" key={"blank" + i} />
+        <div className="calendar-blank" key={"before" + i} />
       ))}
       {Array.from({ length: total }, (_, i) => {
         const d = `${year}-${String(month + 1).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`,
-          n = events.filter((e) => e.date === d).length;
+          items = events.filter((e) => e.date === d);
         return (
           <button
             key={d}
             className={`calendar-day ${d === today() ? "today" : ""} ${day === d ? "chosen" : ""}`}
             onClick={() => setDay(day === d ? "" : d)}
-            aria-label={`${i + 1}, ${n} eventos`}
+            aria-label={`${i + 1} de ${MONTHS[month]}, ${items.length} eventos`}
+            aria-pressed={day === d}
           >
-            <span>{i + 1}</span>
-            {n > 0 && (
-              <small>
-                {n} {n === 1 ? "evento" : "eventos"}
-              </small>
+            <span className="day-number">{i + 1}</span>
+            {items.length > 0 && (
+              <>
+                <span className="calendar-events">
+                  {items.slice(0, 2).map((e) => (
+                    <span
+                      className="calendar-event"
+                      key={e.id}
+                      title={`${e.startTime} · ${e.name}`}
+                    >
+                      <b>{e.startTime}</b> {e.name}
+                    </span>
+                  ))}
+                  {items.length > 2 && (
+                    <span className="calendar-more">
+                      +{items.length - 2} encontros
+                    </span>
+                  )}
+                </span>
+                <small className="calendar-mobile-count">
+                  {items.length}
+                  <span className="sr-only"> eventos</span>
+                </small>
+              </>
             )}
           </button>
         );
       })}
+      {Array.from({ length: padding }, (_, i) => (
+        <div className="calendar-blank" key={"after" + i} />
+      ))}
     </div>
   );
 }
+
 function EventRow({ event: e }) {
   return (
     <article className="event-row">
       <div className="event-date">
         <strong>{e.date?.slice(8)}</strong>
-        <span>{dateFormat(e.date, { weekday: "short" }).replace(".", "")}</span>
+        <span>{dateFormat(e.date, { month: "short" }).replace(".", "")}</span>
       </div>
       <div className="event-info">
         <span className="event-theme">{e.themeName}</span>
@@ -992,37 +980,15 @@ function MyRequests({ requests, onOpen, onNew }) {
     <>
       <div className="page-heading compact">
         <div>
-          <span className="eyebrow">DA IDEIA AO ENCONTRO</span>
+          <span className="eyebrow">ÁREA DO SOLICITANTE</span>
           <h1>
             Minhas solicitações<span className="green-text">.</span>
           </h1>
-          <p>
-            Acompanhe seus eventos, retome rascunhos e organize o próximo
-            encontro.
-          </p>
+          <p>Acompanhe o status dos eventos que você cadastrou.</p>
         </div>
         <button className="button primary" onClick={onNew}>
           <Plus size={17} /> Nova solicitação
         </button>
-      </div>
-      <div className="request-stats">
-        {["draft", "pending", "approved"].map((s) => (
-          <button
-            className={status === s ? "request-stat selected" : "request-stat"}
-            key={s}
-            onClick={() => setStatus(status === s ? "all" : s)}
-          >
-            <span>{STATUS[s]}</span>
-            <strong>{requests.filter((r) => r.status === s).length}</strong>
-            {s === "approved" ? (
-              <CheckCircle2 size={21} />
-            ) : s === "pending" ? (
-              <Clock3 size={21} />
-            ) : (
-              <FileText size={21} />
-            )}
-          </button>
-        ))}
       </div>
       <section className="panel">
         <div className="section-heading">
@@ -1058,7 +1024,9 @@ function MyRequests({ requests, onOpen, onNew }) {
                   <tr key={r.id}>
                     <td>
                       <strong>{r.name || "Solicitação sem título"}</strong>
-                      <small>{r.themeName || "Tema a definir"}</small>
+                      <small>
+                        {r.courseName || r.themeName || "Curso a definir"}
+                      </small>
                     </td>
                     <td>
                       {dateFormat(r.date)}
@@ -1068,7 +1036,10 @@ function MyRequests({ requests, onOpen, onNew }) {
                           : "Horário a definir"}
                       </small>
                     </td>
-                    <td>{r.roomName || "A definir"}</td>
+                    <td>
+                      {r.roomName || "A definir"}
+                      <small>Campus São Bento do Sul</small>
+                    </td>
                     <td>
                       <span className={`badge ${r.status}`}>
                         {STATUS[r.status]}
@@ -1450,7 +1421,7 @@ function RequestModal({
       await onSaved();
     } catch (e) {
       setError(e.message);
-      setFields(e.fields || {});
+      setFields(e.code === "EARLIER_REQUEST" ? {} : e.fields || {});
     } finally {
       setBusy(false);
     }
@@ -1598,12 +1569,30 @@ function RequestModal({
             <span>02</span>
             <div>
               <h3>Pessoas e propósito</h3>
-              <p>Conte um pouco sobre a proposta.</p>
+              <p>Informe quem realiza o encontro e para quem ele é voltado.</p>
             </div>
           </div>
           <div className="form-grid">
             {field("requesterName", "Solicitante / responsável *")}
             {field("audience", "Público-alvo *")}
+            <div className="span-2">
+              {field("organizer", "Realização / entidade organizadora *")}
+            </div>
+            {field(
+              "audienceCourseId",
+              "Curso do público (opcional)",
+              "text",
+              metadata.courses,
+            )}
+            {field(
+              "audienceSemester",
+              "Semestre do público (opcional)",
+              "text",
+              Array.from({ length: 12 }, (_, i) => ({
+                id: String(i + 1),
+                name: `${i + 1}º semestre`,
+              })),
+            )}
             <div className="span-2">
               {field("objective", "Objetivo do evento *", "textarea")}
             </div>
@@ -1702,6 +1691,8 @@ function RequestModal({
           {field("notes", "Observações (opcional)", "textarea")}
           <p className="form-help">
             * Obrigatório para enviar. Rascunhos podem estar incompletos.
+            Alterações de data, horário ou ambiente de um pedido pendente
+            reiniciam sua prioridade na fila.
           </p>
         </fieldset>
         {error && (
@@ -1849,4 +1840,265 @@ function RequestModal({
     </Modal>
   );
 }
+function readEmailAction() {
+  const fragment = new URLSearchParams(window.location.hash.slice(1));
+  for (const [key, kind] of [
+    ["email-verify", "verify"],
+    ["email-unsubscribe", "unsubscribe"],
+  ]) {
+    const token = fragment.get(key);
+    if (token && token.length <= 512) return { kind, token };
+  }
+  return null;
+}
+function NotificationModal({ metadata, onClose, notify }) {
+  const [state, setState] = useState(null),
+    [preferences, setPreferences] = useState({
+      publications: false,
+      reminders: false,
+      courseId: "",
+    }),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    api("/notifications/preferences")
+      .then((data) => {
+        if (active) {
+          setState(data);
+          setPreferences({
+            ...data.preferences,
+            courseId: data.preferences.courseId || "",
+          });
+        }
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const save = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const data = await api("/notifications/preferences", {
+        method: "PUT",
+        body: preferences,
+      });
+      setState(data);
+      setPreferences({
+        ...data.preferences,
+        courseId: data.preferences.courseId || "",
+      });
+      notify(
+        data.verified && data.available
+          ? "Preferências de e-mail atualizadas."
+          : "Preferências salvas. O envio depende da confirmação do e-mail e do serviço disponível.",
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const verify = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const data = await api("/notifications/verify-request", {
+        method: "POST",
+        body: {},
+      });
+      setState(data);
+      notify(
+        data.message || "Pedido de confirmação registrado. Confira seu e-mail.",
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Modal
+      title="Seus avisos da agenda"
+      onClose={() => {
+        if (!busy) onClose();
+      }}
+    >
+      <p className="modal-intro">
+        Escolha os avisos que você quer receber. Sua conta continua funcionando
+        mesmo com os avisos desativados.
+      </p>
+      {!state && !error ? (
+        <div className="loading-state">
+          <LoaderCircle size={21} className="spin" />
+          Carregando preferências…
+        </div>
+      ) : (
+        state && (
+          <form className="stack" onSubmit={save}>
+            <div
+              className={`email-status ${state.available ? "" : "unavailable"}`}
+            >
+              <Mail size={20} />
+              <div>
+                <strong>{state.email}</strong>
+                <p>
+                  {!state.available
+                    ? "O serviço de e-mail ainda não foi configurado. Você pode salvar suas preferências; nenhum envio ocorrerá por enquanto."
+                    : state.verified
+                      ? "Endereço confirmado para receber avisos."
+                      : "Confirme este endereço para ativar os avisos."}
+                </p>
+              </div>
+            </div>
+            <label className="checkbox-option notification-option">
+              <input
+                type="checkbox"
+                checked={!!preferences.publications}
+                disabled={busy}
+                onChange={(e) =>
+                  setPreferences((p) => ({
+                    ...p,
+                    publications: e.target.checked,
+                  }))
+                }
+              />
+              <span>
+                <strong>Novos eventos aprovados</strong>
+                <small>Receba os encontros publicados na agenda.</small>
+              </span>
+            </label>
+            <label className="checkbox-option notification-option">
+              <input
+                type="checkbox"
+                checked={!!preferences.reminders}
+                disabled={busy}
+                onChange={(e) =>
+                  setPreferences((p) => ({ ...p, reminders: e.target.checked }))
+                }
+              />
+              <span>
+                <strong>Lembretes no dia do evento</strong>
+                <small>
+                  Um aviso com data, horário e local antes do início.
+                </small>
+              </span>
+            </label>
+            <label className="field">
+              Setor / curso de interesse
+              <select
+                value={preferences.courseId || ""}
+                disabled={busy}
+                onChange={(e) =>
+                  setPreferences((p) => ({ ...p, courseId: e.target.value }))
+                }
+              >
+                <option value="">Todos os setores / cursos</option>
+                {metadata.courses.map((c) => (
+                  <option value={c.id} key={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="form-help">
+              A confirmação do agendamento de uma solicitação sua acompanha a
+              preferência de novos eventos. Você pode desativar todos os avisos
+              a qualquer momento.
+            </p>
+            {state.available && !state.verified && (
+              <button
+                className="button"
+                type="button"
+                onClick={verify}
+                disabled={busy}
+              >
+                <Mail size={16} />
+                Enviar confirmação de e-mail
+              </button>
+            )}
+            <div className="form-actions">
+              <button
+                type="button"
+                className="button"
+                onClick={onClose}
+                disabled={busy}
+              >
+                Fechar
+              </button>
+              <button className="button primary" disabled={busy}>
+                {busy ? "Salvando…" : "Salvar preferências"}
+              </button>
+            </div>
+          </form>
+        )
+      )}
+      {error && (
+        <div className="inline-error" role="alert">
+          {error}
+        </div>
+      )}
+    </Modal>
+  );
+}
+function EmailActionModal({ action, onClose, notify }) {
+  const [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const verify = action.kind === "verify";
+  return (
+    <Modal
+      title={verify ? "Confirmar seu e-mail" : "Desativar avisos por e-mail"}
+      onClose={() => {
+        if (!busy) onClose();
+      }}
+    >
+      <p className="modal-intro">
+        {verify
+          ? "Confirme que você quer usar este endereço para receber os avisos da agenda. Suas preferências continuam sob seu controle."
+          : "Você pode desativar todos os avisos deste endereço. Isso não altera sua conta nem suas solicitações."}
+      </p>
+      {error && (
+        <div className="inline-error" role="alert">
+          {error}
+        </div>
+      )}
+      <div className="form-actions">
+        <button className="button" disabled={busy} onClick={onClose}>
+          Cancelar
+        </button>
+        <button
+          className={`button ${verify ? "primary" : "danger"}`}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError("");
+            try {
+              const data = await api(`/notifications/${action.kind}`, {
+                method: "POST",
+                body: { token: action.token },
+              });
+              notify(
+                data.message ||
+                  (verify ? "E-mail confirmado." : "Avisos desativados."),
+              );
+              onClose();
+            } catch (e) {
+              setError(e.message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Aguarde…" : verify ? "Confirmar e-mail" : "Desativar avisos"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 createRoot(document.getElementById("root")).render(<App />);

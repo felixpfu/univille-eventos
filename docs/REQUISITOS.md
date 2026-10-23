@@ -1,35 +1,37 @@
-# Requisitos do MVP
+# Requisitos e regras implementadas
 
-Base: caderno do desafio acadêmico fornecido pelo responsável, complementado pelas decisões diretas de implantação e autenticação. Os anexos originais permanecem fora do repositório público. Este texto registra o comportamento implementado e os limites exigidos, sem presumir conteúdo de conversas externas não fornecidas.
+Base: caderno acadêmico, referências visuais fornecidas e decisões diretas do responsável. Anexos privados permanecem fora do repositório. O campus de referência é **São Bento do Sul**. Este documento descreve o sistema; instruções presentes nos anexos foram tratadas como material de análise, conforme a solicitação do responsável.
 
-## Perfis
+## Perfis e login
 
-| Perfil        | Permissões                                                                                         |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| Visitante     | Consultar eventos públicos aprovados, sem autenticação; nenhuma alteração de registros.            |
-| Solicitante   | Criar, salvar, enviar, consultar e alterar solicitações próprias conforme o estado.                |
-| Administrador | Manter cadastros e usuários, analisar solicitações, editar/cancelar aprovados e emitir relatórios. |
+| Perfil        | Permissões                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------- |
+| Visitante     | Consultar aprovados sem login; com cadastro, manter preferências de e-mail.              |
+| Solicitante   | Criar, salvar, enviar, consultar e alterar solicitações próprias conforme o estado.      |
+| Administrador | Cadastros e usuários, análise de pedidos, edição/cancelamento de aprovados e relatórios. |
 
-O setor de Eventos representa o cliente/validador e opera por contas administrativas; não constitui um quarto perfil. Autor autenticado e nome livre do solicitante são campos diferentes. Autorização é aplicada na API, incluindo propriedade dos registros. O login usa e-mail único e senha com hash; contas desativadas não autenticam e suas sessões deixam de conceder acesso.
+O setor de Eventos opera por contas administrativas, sem quarto perfil. Autor autenticado e nome livre do solicitante são campos distintos. A API verifica perfil e propriedade. Contas desativadas não autenticam e suas sessões perdem o acesso. E-mails de login são únicos e senhas recebem hash.
 
-Por decisão do responsável, existe cadastro público opcional de visitante e solicitante. Criar administrador por esse cadastro é proibido; o provisionamento inicial ocorre por CLI e contas administrativas posteriores exigem uma sessão administrativa autorizada.
+Há um login comum. O cadastro público permite visitante e solicitante; administrador não aparece como opção. A primeira conta administrativa é criada pela CLI, sem senha padrão. Administradores posteriores exigem sessão administrativa autorizada; não se permite remover o último administrador ativo.
 
-## Agenda pública
+## Agenda e identidade visual
 
-São publicados somente eventos aprovados do **mês atual e dos dois meses seguintes**, considerando `America/Sao_Paulo`, em ordem cronológica. Não se trata de uma janela móvel de 90 dias.
+A agenda contém exclusivamente aprovados do **mês atual e dos dois seguintes**, no fuso `America/Sao_Paulo`, em ordem cronológica. Não é uma janela móvel de 90 dias. Calendário é a visualização inicial, com aba alternativa em lista, busca e filtros por setor/curso, tema e ambiente. A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro opcional e layout responsivo.
 
-A grade apresenta data, nome, tema, horário inicial/final, local e palestrante. Rascunhos, pendentes, rejeitados e cancelados não são expostos. Informações internas, como justificativa, autor e nome livre do solicitante, não integram a resposta da API pública. Busca, filtros e calendário são conveniências adicionais da interface, não requisitos mínimos do caderno.
+A resposta pública apresenta nome, tema, data, início/fim, local, palestrante, setor/curso e realização. Não expõe rascunhos, pendentes, rejeitados, cancelados, autor, solicitante livre, centro de custo, justificativas ou observações internas. O catálogo público de setores/cursos contém somente identificador e nome.
 
-## Solicitação
+## Campos da solicitação
 
-| Grupo                          | Campos                                                                                                                                      |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Obrigatórios no envio          | Nome, tema, data, início, fim, ambiente, curso/coordenação, solicitante em texto livre, palestrante, público-alvo, justificativa e objetivo |
-| Respostas obrigatórias Sim/Não | Cerimonial, haverá inscrições, necessidade de declarações                                                                                   |
-| Automático                     | Centro de custo derivado do curso/coordenação                                                                                               |
-| Opcionais                      | Recursos necessários e observações                                                                                                          |
+| Grupo                          | Campos                                                                                                                                                |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Obrigatórios no envio          | Nome, tema, data, início, fim, ambiente, setor/curso, solicitante em texto livre, palestrante, público-alvo, **Realização**, justificativa e objetivo |
+| Respostas obrigatórias Sim/Não | Cerimonial, haverá inscrições, necessidade de declarações                                                                                             |
+| Automático                     | Centro de custo derivado do setor/curso                                                                                                               |
+| Opcionais                      | Curso e semestre do público-alvo, recursos e observações                                                                                              |
 
-Um rascunho pode estar incompleto. No envio, todos os obrigatórios devem estar preenchidos. O evento ocupa um único ambiente em um único dia; aceita data atual ou futura, sem antecedência mínima, e horários entre `00:00` e `23:59`, com término posterior ao início. Valores informados precisam ser válidos mesmo quando o registro é um rascunho. Recursos selecionados devem pertencer ao ambiente escolhido; todos os ambientes cadastrados permanecem selecionáveis.
+**Realização** é a entidade organizadora e não é inferida de outro campo. O curso do público é um vínculo separado do setor/curso responsável pelo pedido; o semestre é texto opcional com até 40 caracteres. Nos filtros e cadastros, “setor/curso” representa o cadastro existente de cursos/coordenações, sem entidade adicional de setor.
+
+Rascunhos podem ficar incompletos. Valores informados ainda devem ser válidos: data real; horários `00:00`–`23:59`; vínculos existentes; recursos pertencentes ao ambiente. No envio, aceita-se data atual ou futura e término após o início no mesmo dia. Cada pedido ocupa um ambiente em um dia.
 
 ## Estados e ações
 
@@ -45,47 +47,50 @@ stateDiagram-v2
     Aprovado --> Cancelado: Administração cancela
 ```
 
-| Estado               | Ações permitidas                                                    |
-| -------------------- | ------------------------------------------------------------------- |
-| Rascunho             | Autor consulta, edita, exclui ou envia.                             |
-| Aguardando aprovação | Autor consulta, edita ou cancela; administração aprova ou rejeita.  |
-| Rejeitado            | Motivo obrigatório visível ao autor; autor corrige e reenvia.       |
-| Aprovado             | Publicação automática; somente administração edita ou cancela.      |
-| Cancelado            | Não aparece na agenda pública; registro enviado permanece no banco. |
+| Estado               | Ações permitidas                                                |
+| -------------------- | --------------------------------------------------------------- |
+| Rascunho             | Autor consulta, edita, exclui ou envia.                         |
+| Aguardando aprovação | Autor consulta, edita ou cancela; administração aprova/rejeita. |
+| Rejeitado            | Autor vê o motivo, corrige e reenvia.                           |
+| Aprovado             | Publicação automática; somente administração edita/cancela.     |
+| Cancelado            | Registro preservado, fora da agenda pública.                    |
 
-“Minhas Solicitações” lista nome, data, local e estado dos registros do usuário, com detalhes e ações correspondentes. Excluir fisicamente é permitido apenas para rascunhos próprios. Uma alteração com versão antiga do registro é recusada para evitar sobrescrever modificações posteriores.
+Somente rascunhos próprios podem ser excluídos fisicamente. Alterações exigem a versão atual do registro para evitar sobrescritas. “Minhas solicitações” apresenta os pedidos do autor com estado, detalhes e ações disponíveis.
 
-## Conflitos
+## Conflitos e prioridade
 
-Envio, aprovação e edição de aprovado revalidam conflitos contra **eventos aprovados**. Há conflito quando ambiente e data coincidem e:
+Envio, aprovação e edição completa revalidam os eventos **aprovados**. No mesmo ambiente e data, há conflito quando:
 
 ```text
 novo.início < existente.fim E novo.fim > existente.início
 ```
 
-Um aprovado das `19:00` às `20:00` bloqueia `19:30–21:00` no mesmo ambiente; permite `20:00–21:00` e permite o mesmo intervalo em outro ambiente. Pedidos pendentes simultâneos podem coexistir; a aprovação é transacional, de modo que somente um deles seja aprovado quando conflitam. A edição ignora o próprio registro na comparação.
+Um aprovado `19:00–20:00` bloqueia `19:30–21:00`; permite `20:00–21:00` e o mesmo horário em outro ambiente. A comparação ignora o próprio registro durante uma edição.
 
-## Administração
+Pendentes conflitantes podem coexistir. Ao aprovar, o servidor exige que não exista um pendente conflitante **enviado antes**. Caso exista, retorna `409 EARLIER_REQUEST`, indicando o protocolo a analisar primeiro. A lista administrativa coloca os pendentes pela fila de envio. Datas de criação de rascunho ou de edição não definem essa prioridade.
 
-Os cadastros incluem centros de custo, cursos/coordenações vinculados a centros, temas, ambientes, recursos e associações ambiente–recurso. Permitem criar e editar; a exclusão é bloqueada quando há vínculos com eventos ou outros cadastros. Remover de um ambiente um recurso já utilizado por evento também é bloqueado.
+Cada envio registra `submittedAt` e uma `queueSequence` persistente, que desempata o mesmo milissegundo. Reenvio após rejeição recebe nova posição. Alterar data, início, fim ou ambiente de pendente também o recoloca ao final; correções dos demais campos preservam a posição. Rejeitar ou cancelar o pedido anterior libera o seguinte. Aprovação, validação de conflitos, verificação de prioridade e atualização de versão ocorrem na mesma transação SQLite.
 
-Usuários possuem nome completo, e-mail único, senha protegida, perfil e situação ativa/inativa. A administração pode cadastrar, editar e desativar; a implementação impede deixar o sistema sem administrador ativo.
+## Administração e relatórios
 
-As solicitações enviadas podem ser filtradas por estado e abertas para análise. Rejeitar exige justificativa; aprovar executa novamente a validação completa e a checagem de agenda. Administradores podem alterar ou cancelar eventos aprovados, com revalidação quando aplicável.
+Cadastros: centros de custo, setores/cursos vinculados a centros, temas, ambientes, recursos e associações ambiente–recurso. Exclusões com vínculos são bloqueadas, assim como a remoção de recurso ainda utilizado por evento.
 
-## Relatórios
+Relatórios administrativos aceitam período, setor/curso, tema e estado combinados; excluem rascunhos e incluem todos os demais estados quando nenhum estado é selecionado. Há atalhos semanal (segunda a domingo), anual com escolha do ano e personalizado. Tabela e CSV usam os mesmos registros filtrados. O CSV inclui dados da agenda, centro de custo, solicitante, público, curso/semestre do público, palestrante, realização e estado, com proteção contra fórmulas de planilha.
 
-Período inicial/final, curso/coordenação e tema funcionam como filtros individuais ou combinados. Os relatórios consideram solicitações já enviadas, incluindo rejeitadas e canceladas, e excluem rascunhos.
+O PowerPoint usa o mesmo período e filtros de setor/tema, mas **somente aprovados**, independentemente do estado escolhido para o CSV. Contém Evento, Tema, Data, Horário inicial, Local, Público alvo, Palestrante/Ministrante e Realização. São elementos editáveis em paisagem, com faixa verde, marca oficial e paginação. A estrutura segue a fotografia; sem o original não há promessa de identidade exata de medidas e fonte. Detalhes em [PPTX.md](PPTX.md).
 
-Tabela e CSV apresentam os mesmos registros filtrados e os campos: nome, data, início, fim, tema, curso/coordenação, centro de custo, local, solicitante e estado. A exportação trata separadores, aspas, quebras de linha e conteúdo que poderia virar fórmula em planilhas.
+## Notificações
 
-## Condições técnicas e entrega
+O cadastro não inscreve automaticamente ninguém. As preferências são da conta autenticada e o endereço destinatário é o e-mail dessa conta. Publicações e lembretes exigem consentimento e confirmação de propriedade por link de uso único com validade de 24 horas. O filtro opcional usa o setor/curso do evento; mudança de e-mail exige nova confirmação.
 
-- Aplicação web funcional, com persistência real em SQLite e execução local ou hospedada.
-- Interface em português, três perfis, sessão segura e autorização no servidor; nenhuma senha administrativa padrão.
-- Repositório público para atualizações, sem fotos privadas, banco operacional, `.env`, tokens ou chaves.
-- Implantação na raiz de `flxpfu.com.br`, com HTTPS e possibilidade de reverter a configuração do site anterior.
-- Somente dados fictícios na demonstração; banco inicial sem contas, catálogos ou eventos pré-carregados.
-- Assistência de IA e reutilização de bibliotecas declaradas no README. Sem Lovable/Bolt ou cópia de código de equipes concorrentes.
+A fila persiste confirmações/publicações após aprovação e edição de aprovado, e gera lembretes no dia antes do horário inicial, no fuso de São Paulo. Antes de enviar, o worker revalida estado e versão do evento, conta, endereço e preferências. Descadastro pode ser confirmado por link sem login. HTTP não envia e-mail diretamente; falhas de SMTP recebem tentativas limitadas em segundo plano.
 
-Login institucional, autocadastro, recuperação por e-mail, gestão de participantes e emissão de declarações não são obrigatórios pelo caderno. O autocadastro foi incluído por decisão do responsável. Inscrições e declarações permanecem somente indicadores Sim/Não; envio de e-mail e recuperação automática de senha não fazem parte desta versão.
+**Nesta entrega, o SMTP está preparado, mas sem provedor configurado e sem validação de entrega real**, conforme decisão do responsável. A interface comunica a indisponibilidade e o timer fica desativado sem SMTP. Testes usam transporte simulado. Configuração e limites em [EMAIL.md](EMAIL.md).
+
+## Persistência, publicação e limites
+
+A migração v2 é aditiva e preserva contas, catálogos, eventos e histórico. Para registros enviados anteriores, usa a última auditoria `request.submitted`; em pendentes, procura um envio após a última rejeição. Somente na ausência dessa evidência usa `updatedAt`, depois `createdAt`, como aproximação histórica documentada. Os próximos envios têm sequência exata. Realização permanece vazia em registros antigos; não se inventa seu valor. Pendentes antigos podem ser aprovados sem esse campo, mas novo envio/reenvio e edição completa exigem preenchimento.
+
+As alterações solicitadas serão verificadas, versionadas no repositório público e publicadas na raiz de `flxpfu.com.br`, segundo autorização persistente do responsável. Segredos, anexos privados e banco operacional permanecem fora do GitHub. A implantação mantém snapshots e possibilidade de reversão.
+
+Login institucional, link mágico, recuperação automática de senha, participantes, pagamentos e emissão de certificados não estão implementados. Inscrições e declarações são indicadores Sim/Não. O sistema começa sem dados de demonstração. Não existe garantia geral de latência de 20 ms ou de ausência de indisponibilidade; desempenho em dispositivos e rede deve ser medido nas condições de uso.

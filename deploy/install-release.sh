@@ -104,9 +104,17 @@ chmod -R go-w "$DEST"
 OLD_RELEASE="$(readlink -f "$APP_ROOT/current" 2>/dev/null || true)"
 OLD_ACTIVE=0
 OLD_ENABLED=0
+OLD_MAIL_ENABLED=0
+OLD_MAIL_ACTIVE=0
 systemctl is-active --quiet univille-eventos && OLD_ACTIVE=1
 systemctl is-enabled --quiet univille-eventos 2>/dev/null && OLD_ENABLED=1
+systemctl is-enabled --quiet univille-notifications.timer 2>/dev/null && OLD_MAIL_ENABLED=1
+systemctl is-active --quiet univille-notifications.timer 2>/dev/null && OLD_MAIL_ACTIVE=1
 if [[ -e "$UNIT_FILE" ]]; then cp -a "$UNIT_FILE" "$BACKUP_DIR/previous.service"; fi
+for type in service timer; do
+  mail_unit="/etc/systemd/system/univille-notifications.$type"
+  if [[ -e "$mail_unit" ]]; then cp -a "$mail_unit" "$BACKUP_DIR/previous-mail.$type"; fi
+done
 printf '%s\n' "$OLD_RELEASE" > "$BACKUP_DIR/previous-release.txt"
 cp -L "$NGINX_CONFIG" "$BACKUP_DIR/nginx-before.conf"
 chmod 0600 "$BACKUP_DIR/nginx-before.conf"
@@ -134,7 +142,17 @@ rollback_on_failure() {
       systemctl disable univille-eventos
       rm -f "$UNIT_FILE"
     fi
+    systemctl stop univille-notifications.timer univille-notifications.service 2>/dev/null
+    for type in service timer; do
+      if [[ -e "$BACKUP_DIR/previous-mail.$type" ]]; then
+        cp -a "$BACKUP_DIR/previous-mail.$type" "/etc/systemd/system/univille-notifications.$type"
+      else
+        rm -f "/etc/systemd/system/univille-notifications.$type"
+      fi
+    done
     systemctl daemon-reload
+    if [[ "$OLD_MAIL_ENABLED" -eq 1 ]]; then systemctl enable univille-notifications.timer; else systemctl disable univille-notifications.timer 2>/dev/null; fi
+    if [[ "$OLD_MAIL_ACTIVE" -eq 1 ]]; then systemctl start univille-notifications.timer; fi
     if [[ "$OLD_ACTIVE" -eq 1 ]]; then systemctl restart univille-eventos; else systemctl stop univille-eventos; fi
     if [[ "$OLD_ENABLED" -eq 0 ]]; then systemctl disable univille-eventos 2>/dev/null; fi
     echo "Dados preservados. Snapshot anterior, se necessário: $BACKUP_DIR/data-before.tar.gz" >&2
@@ -142,11 +160,15 @@ rollback_on_failure() {
   exit "$status"
 }
 trap rollback_on_failure EXIT
+# Stop both writers before taking a consistent SQLite snapshot.
+systemctl stop univille-notifications.timer univille-notifications.service 2>/dev/null || true
 if [[ "$OLD_ACTIVE" -eq 1 || -e "$UNIT_FILE" ]]; then systemctl stop univille-eventos; fi
 # SQLite e seus arquivos WAL são copiados juntos enquanto o serviço está parado.
 tar -czf "$BACKUP_DIR/data-before.tar.gz" -C "$STATE_DIR" .
 chmod 0600 "$BACKUP_DIR/data-before.tar.gz"
 install -m 0644 "$SCRIPT_DIR/univille-eventos.service" "$UNIT_FILE"
+install -m 0644 "$SCRIPT_DIR/univille-notifications.service" /etc/systemd/system/univille-notifications.service
+install -m 0644 "$SCRIPT_DIR/univille-notifications.timer" /etc/systemd/system/univille-notifications.timer
 ln -sfn "$DEST" "$APP_ROOT/.current-next"
 mv -Tf "$APP_ROOT/.current-next" "$APP_ROOT/current"
 systemctl daemon-reload
@@ -159,11 +181,17 @@ done
 [[ "$HEALTHY" -eq 1 ]] || { echo 'O serviço não respondeu ao health check.' >&2; exit 1; }
 curl -fsS --max-time 5 http://127.0.0.1:3002/ >/dev/null
 systemctl enable univille-eventos
+if "$NODE_ROOT/bin/node" --env-file="$ENV_FILE" --input-type=module -e "import { notificationConfig } from 'file:///opt/univille-eventos/current/server/notifications.js'; process.exit(notificationConfig().available ? 0 : 1)"; then
+  systemctl enable --now univille-notifications.timer
+else
+  systemctl disable --now univille-notifications.timer >/dev/null 2>&1 || true
+  echo 'Notificações preparadas; timer desativado até configurar SMTP válido.'
+fi
 if [[ "$PUBLISH" -eq 1 ]]; then
   PUBLISH_ATTEMPTED=1
   python3 "$SCRIPT_DIR/configure-nginx.py" apply --config "$NGINX_CONFIG"
-  curl --resolve flxpfu.com.br:443:127.0.0.1 -fsS --max-time 10 https://flxpfu.com.br/api/health >/dev/null
-  curl --resolve flxpfu.com.br:443:127.0.0.1 -fsS --max-time 10 https://flxpfu.com.br/ >/dev/null
+  curl --resolve flxpfu.com.br:443:127.0.0.1 -fsS --retry 3 --retry-all-errors --retry-delay 1 --max-time 10 https://flxpfu.com.br/api/health >/dev/null
+  curl --resolve flxpfu.com.br:443:127.0.0.1 -fsS --retry 3 --retry-all-errors --retry-delay 1 --max-time 10 https://flxpfu.com.br/ >/dev/null
 fi
 ROLLBACK_REQUIRED=0
 printf 'Release ativo: %s\nBackup: %s\n' "$DEST" "$BACKUP_DIR"
