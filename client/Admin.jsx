@@ -1119,7 +1119,6 @@ function Reports({ api, metadata }) {
     }),
     [today],
   );
-  const [weekDay, setWeekDay] = useState(today);
   const [year, setYear] = useState(today.slice(0, 4));
   const [filters, setFilters] = useState(initial);
   const [applied, setApplied] = useState(initial);
@@ -1169,7 +1168,7 @@ function Reports({ api, metadata }) {
     if (period === "year") setYear(selectedYear);
     const range =
       period === "week"
-        ? weekRange(weekDay)
+        ? weekRange(todaySaoPaulo())
         : period === "year"
           ? { from: `${selectedYear}-01-01`, to: `${selectedYear}-12-31` }
           : { from: filters.from, to: filters.to };
@@ -1193,7 +1192,8 @@ function Reports({ api, metadata }) {
           <p className="eyebrow">DADOS PARA PLANEJAR</p>
           <h2>Relatórios de eventos</h2>
           <p className="muted">
-            Selecione a semana, o ano ou um período personalizado.
+            Escolha a data inicial e a data final. Os atalhos de semana e ano
+            preenchem essas datas para você.
           </p>
         </div>
         {!loading && !error && (
@@ -1229,26 +1229,11 @@ function Reports({ api, metadata }) {
             value={filters.period}
             onChange={(event) => choosePeriod(event.target.value)}
           >
-            <option value="week">Semanal · segunda a domingo</option>
+            <option value="week">Semana atual</option>
             <option value="year">Anual · ano completo</option>
             <option value="custom">Personalizado</option>
           </select>
         </label>
-        {filters.period === "week" && (
-          <label className="field">
-            <span>Escolha um dia da semana desejada</span>
-            <input
-              type="date"
-              required
-              value={weekDay}
-              onChange={(event) => {
-                setWeekDay(event.target.value);
-                if (event.target.value)
-                  setFilters({ ...filters, ...weekRange(event.target.value) });
-              }}
-            />
-          </label>
-        )}
         {filters.period === "year" && (
           <label className="field">
             <span>Ano do relatório</span>
@@ -1357,10 +1342,11 @@ function Reports({ api, metadata }) {
             className="button"
             type="button"
             onClick={() => {
-              setWeekDay(today);
-              setYear(today.slice(0, 4));
-              setFilters(initial);
-              setApplied(initial);
+              const currentDay = todaySaoPaulo();
+              const currentWeek = { ...initial, ...weekRange(currentDay) };
+              setYear(currentDay.slice(0, 4));
+              setFilters(currentWeek);
+              setApplied(currentWeek);
               setRefresh((value) => value + 1);
             }}
           >

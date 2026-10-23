@@ -1,6 +1,10 @@
 # Agenda institucional em PowerPoint
 
-Na administração, abra **Relatórios**, escolha **Semanal**, **Anual** ou **Personalizado**, ajuste os filtros e pressione **Aplicar filtros**. A semana vai de segunda a domingo. A semana inicial usa a data de São Paulo, sem depender do fuso do computador. O relatório anual permite selecionar o ano.
+Na administração, abra **Relatórios**, preencha diretamente **Data inicial** e **Data final**, ajuste os filtros e pressione **Aplicar filtros**. O campo adicional “Escolha um dia da semana desejada” foi removido; editar uma das datas muda o tipo para **Personalizado**, preservando o outro extremo do intervalo.
+
+A opção **Semana atual** preenche as datas de segunda a domingo da semana corrente, usando o dia atual de São Paulo. **Anual · ano completo** preenche 1º de janeiro e 31 de dezembro do ano selecionado. Depois de escolher essas opções ou editar as datas, use **Aplicar filtros** para atualizar a tabela e os downloads. O botão separado **Semana atual** restaura e aplica imediatamente a semana corrente, recalculada no momento do clique.
+
+A convenção semanal continua sendo segunda a domingo. As datas de um intervalo personalizado são respeitadas sem alinhamento automático ao começo da semana.
 
 - **Excel / CSV** exporta os registros e o status selecionados na tabela administrativa.
 - **PowerPoint · aprovados** exporta somente eventos aprovados, usando o período, o setor/curso e o tema aplicados. O status selecionado para o CSV não muda essa regra.

@@ -72,11 +72,26 @@ Use dados fictícios e sessões separadas de visitante, solicitante e administra
 5. Envie dois pendentes conflitantes. Tente aprovar o segundo primeiro e confira a recusa indicando o protocolo anterior. Rejeite o primeiro, confira o motivo para o autor e teste reenvio com nova posição.
 6. Corrija apenas o título de um pendente e confira a posição preservada. Mude local/data/horário e confira a nova posição. Após aprovação, confirme a agenda e os bloqueios de sobreposição.
 7. Edite/cancele um aprovado como administrador; cancele um pendente próprio e exclua um rascunho próprio. Confira as confirmações de cancelamento e exclusão, a opção de voltar sem executar e a preservação dos registros enviados.
-8. Nos relatórios, escolha semana, ano e período personalizado; combine setor, tema e estado. Compare tabela/CSV e confira as quinze colunas no Excel pt-BR. Abra PowerPoint e PDF e confira as oito colunas, só aprovados, identidade visual e várias páginas quando necessário. CSV segue o estado escolhido; PPTX e PDF usam apenas aprovados.
+8. Nos relatórios, informe diretamente Data inicial e Data final ou use as opções Semana atual/Anual para preencher o formulário; pressione Aplicar filtros e combine setor, tema e estado. Compare tabela/CSV e confira as quinze colunas no Excel pt-BR. Abra PowerPoint e PDF e confira as oito colunas, só aprovados, identidade visual e várias páginas quando necessário. CSV segue o estado escolhido; PPTX e PDF usam apenas aprovados.
 9. Na conta, salve/desative notificações. Sem SMTP, confira o aviso de indisponibilidade e que não há alegação de envio. A confirmação por link e entrega real devem ser aceitas separadamente, após configurar um provedor e autorizar uma conta de teste.
 10. Troque a senha e confirme a revogação de sessões antigas. Confira as confirmações antes de sair da conta, desativar outra conta ou reduzir seu acesso; use **Voltar** antes de repetir e confirmar. Confira perda de acesso após a desativação e preserve o último administrador ativo.
 11. Repita navegação, filtros, formulário e diálogos em computador e celular. Confira foco de teclado, rolagem, rótulos e mensagens de erro.
 12. Após publicar, abra o domínio real e confira os fluxos alterados, a nova versão dos assets e a persistência de contas/eventos existentes.
+
+## Aceite da seleção direta de período — v1.5.1
+
+Roteiro para conferir a revisão do formulário; a evidência da execução local aparece após os cenários:
+
+1. Abra Relatórios e confirme que Data inicial e Data final permanecem disponíveis, sem o campo adicional “Escolha um dia da semana desejada”.
+2. Escolha **Semana atual**. Confira o preenchimento de segunda a domingo da semana corrente de São Paulo e pressione **Aplicar filtros** para atualizar tabela, legenda e links de exportação.
+3. Informe manualmente `18/10/2026` e `31/10/2026`. Confira o tipo Personalizado, as datas preservadas sem realinhamento para segunda-feira e, após aplicar, o mesmo intervalo no CSV, PowerPoint e PDF.
+4. Escolha **Anual · ano completo**, altere o ano e confira 1º de janeiro a 31 de dezembro. Aplique e confira o período dos downloads.
+5. Use o botão separado **Semana atual**. Confira que restaura e aplica a semana da data atual de São Paulo, inclusive numa aba que permaneceu aberta durante a mudança de domingo para segunda-feira.
+6. Repita o formulário em computador e celular. Confira datas legíveis, acesso a Aplicar filtros e ausência de rolagem horizontal da página.
+
+A regra de cálculo continua sendo segunda a domingo. Esta revisão remove o campo intermediário e permite escolher o intervalo diretamente; não altera a convenção semanal.
+
+Na revisão local, foram conferidos: dois campos de data e ausência do campo intermediário; edição pelo teclado de 18 a 31/10/2026, com tipo Personalizado e os três links usando esse intervalo; preenchimento e aplicação do ano de 2026; retorno imediato à semana atual; e layout de computador e celular de 390 × 844, sem rolagem horizontal da página. A virada de domingo para segunda foi revisada no código: o clique recalcula o dia no fuso de São Paulo, sem reutilizar a data de abertura da tela.
 
 ## Aceite da alteração de calendário e confirmações
 
