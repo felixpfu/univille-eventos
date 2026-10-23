@@ -9,7 +9,8 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { createApp } from "../server/app.js";
 import { createAdministrator } from "../scripts/admin.js";
-import { verifyPassword } from "../server/security.js";
+import { verifyPassword, hashPassword } from "../server/security.js";
+import { cnpjField } from "../server/domain.js";
 const PASSWORD = "Teste ficticio seguro 2026!";
 const fixedNow = () => new Date("2026-10-23T15:00:00Z");
 
@@ -81,7 +82,18 @@ async function register(
 ) {
   const result = await f.request("/auth/register", {
     method: "POST",
-    body: { name: "Pessoa fictícia", email, password: PASSWORD, role },
+    body: {
+      name: "Pessoa fictícia",
+      email,
+      password: PASSWORD,
+      role,
+      ...(role === "requester"
+        ? {
+            companyName: "Empresa fictícia de testes",
+            cnpj: "12.345.678/0001-95",
+          }
+        : {}),
+    },
   });
   assert.equal(result.status, 201, JSON.stringify(result.data));
   return { cookie: result.cookie, user: result.data.user };
@@ -1218,7 +1230,7 @@ test("Version 1 migration preserves requests and reconstructs last actual send o
     audit.run("request.submitted", "resent", "2026-10-21T10:00:00.000Z");
     db.close();
     db = openDatabase(dbPath);
-    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 2);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
     const rows = db
       .prepare(
         "SELECT id,name,submittedAt,queueSequence,organizer FROM events ORDER BY queueSequence",
@@ -1248,6 +1260,315 @@ test("Version 1 migration preserves requests and reconstructs last actual send o
       rows,
     );
   } finally {
+    db.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("Registration explicitly selects a profile; visitors need only email/password and requesters supply private company details", async () => {
+  const f = await fixture();
+  try {
+    const base = { email: "minimal@example.test", password: PASSWORD };
+    assert.equal(
+      (await f.request("/auth/register", { method: "POST", body: base }))
+        .status,
+      400,
+    );
+    const visitor = await f.request("/auth/register", {
+      method: "POST",
+      body: { ...base, role: "visitor" },
+    });
+    assert.equal(visitor.status, 201);
+    assert.equal(visitor.data.user.name, "Visitante");
+    assert.equal(visitor.data.user.companyName, "");
+    assert.equal(visitor.data.user.cnpj, "");
+    const requesterBody = {
+      role: "requester",
+      name: "Solicitante fictício",
+      email: "company@example.test",
+      password: PASSWORD,
+      companyName: "  Empresa de testes  ",
+      cnpj: "12.abc.345/01de-35",
+    };
+    for (const field of ["name", "companyName", "cnpj"]) {
+      const body = { ...requesterBody };
+      delete body[field];
+      const result = await f.request("/auth/register", {
+        method: "POST",
+        body,
+      });
+      assert.equal(result.status, 400, `Missing ${field} must fail`);
+    }
+    assert.equal(
+      (
+        await f.request("/auth/register", {
+          method: "POST",
+          body: { ...requesterBody, cnpj: "12.ABC.345/01DE-34" },
+        })
+      ).status,
+      400,
+    );
+    assert.equal(
+      (
+        await f.request("/auth/register", {
+          method: "POST",
+          body: { ...requesterBody, companyName: "X".repeat(201) },
+        })
+      ).status,
+      400,
+    );
+    const requester = await f.request("/auth/register", {
+      method: "POST",
+      body: requesterBody,
+    });
+    assert.equal(requester.status, 201, JSON.stringify(requester.data));
+    assert.equal(requester.data.user.companyName, "Empresa de testes");
+    assert.equal(requester.data.user.cnpj, "12ABC34501DE35");
+    const stored = f.db
+      .prepare("SELECT companyName,cnpj FROM users WHERE id=?")
+      .get(requester.data.user.id);
+    assert.equal(stored.companyName, "Empresa de testes");
+    assert.equal(stored.cnpj, "12ABC34501DE35");
+    const login = await f.request("/auth/login", {
+      method: "POST",
+      body: { email: requesterBody.email, password: PASSWORD },
+    });
+    assert.equal(login.status, 200);
+    assert.deepEqual(login.data.user, requester.data.user);
+    assert.deepEqual(
+      (await f.request("/auth/me", { cookie: login.cookie })).data.user,
+      requester.data.user,
+    );
+    const listed = (
+      await f.request("/admin/users", { cookie: f.admin })
+    ).data.users.find((u) => u.id === requester.data.user.id);
+    assert.equal(listed.companyName, stored.companyName);
+    assert.equal(listed.cnpj, stored.cnpj);
+    f.db
+      .prepare(
+        "INSERT INTO events(id,authorId,name,status,date,startTime,endTime,createdAt,updatedAt) VALUES (?,?,?,'approved','2026-10-24','10:00','11:00',?,?)",
+      )
+      .run(
+        "company-public-test",
+        requester.data.user.id,
+        "Evento fictício público",
+        fixedNow().toISOString(),
+        fixedNow().toISOString(),
+      );
+    const publicAgenda = await f.request("/events");
+    assert.equal(publicAgenda.data.events.length, 1);
+    for (const path of ["/events", "/metadata", "/auth/me"]) {
+      const output = JSON.stringify((await f.request(path)).data);
+      assert.ok(
+        !output.includes("companyName") && !output.includes("cnpj"),
+        path,
+      );
+      assert.ok(
+        !output.includes(stored.companyName) && !output.includes(stored.cnpj),
+        path,
+      );
+    }
+    assert.equal(
+      (await f.request("/admin/users", { cookie: visitor.cookie })).status,
+      403,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test("CNPJ validates numeric and alphanumeric check digits and rejects malformed values without discarding letters", () => {
+  assert.equal(cnpjField("12.345.678/0001-95", true), "12345678000195");
+  assert.equal(cnpjField("12.ABC.345/01DE-35", true), "12ABC34501DE35");
+  assert.equal(cnpjField("  12abc34501de35  ", true), "12ABC34501DE35");
+  assert.equal(cnpjField(""), "");
+  for (const value of [
+    "",
+    "00000000000000",
+    "11111111111111",
+    "12345678000194",
+    "12ABC34501DE34",
+    "12ABC34501DE3A",
+    "12.ABC.345/01DE35",
+    "12 ABC34501DE35",
+    "12ABC34501DÉ35",
+    "12ABC34501DE35!",
+    12345678000195,
+  ])
+    assert.throws(
+      () => cnpjField(value, true),
+      (error) => error.status === 400,
+      String(value),
+    );
+});
+
+test("Administrative company changes require complete valid details while preserving legacy requester edits", async () => {
+  const f = await fixture();
+  try {
+    const base = {
+      name: "Conta fictícia",
+      email: "admin-created-requester@example.test",
+      password: PASSWORD,
+      role: "requester",
+    };
+    assert.equal(
+      (
+        await f.request("/admin/users", {
+          method: "POST",
+          cookie: f.admin,
+          body: base,
+        })
+      ).status,
+      400,
+    );
+    const created = await f.request("/admin/users", {
+      method: "POST",
+      cookie: f.admin,
+      body: {
+        ...base,
+        companyName: "Empresa criada pelo administrador",
+        cnpj: "12.345.678/0001-95",
+      },
+    });
+    assert.equal(created.status, 201);
+    assert.equal(created.data.user.cnpj, "12345678000195");
+    const update = (id, body) =>
+      f.request(`/admin/users/${id}`, { method: "PUT", cookie: f.admin, body });
+    assert.equal(
+      (await update(created.data.user.id, { companyName: "", cnpj: "" }))
+        .status,
+      400,
+    );
+    const renamed = await update(created.data.user.id, {
+      name: "Nome alterado",
+    });
+    assert.equal(renamed.status, 200);
+    assert.equal(renamed.data.user.companyName, created.data.user.companyName);
+    assert.equal(renamed.data.user.cnpj, created.data.user.cnpj);
+    const changed = await update(created.data.user.id, {
+      companyName: "Empresa alterada",
+      cnpj: "12abc34501de35",
+    });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.data.user.cnpj, "12ABC34501DE35");
+    f.db
+      .prepare(
+        "INSERT INTO users(id,name,email,passwordHash,role,createdAt) VALUES ('legacy-requester','Conta antiga','legacy-requester@example.test','unused','requester',?)",
+      )
+      .run(fixedNow().toISOString());
+    const legacy = await update("legacy-requester", {
+      name: "Conta antiga revisada",
+      companyName: "",
+      cnpj: "",
+    });
+    assert.equal(legacy.status, 200);
+    assert.equal(legacy.data.user.companyName, "");
+    assert.equal(legacy.data.user.cnpj, "");
+    assert.equal(
+      (await update("legacy-requester", { companyName: "Empresa incompleta" }))
+        .status,
+      400,
+    );
+    assert.equal(
+      (
+        await update("legacy-requester", {
+          companyName: "Empresa válida",
+          cnpj: "12345678000195",
+        })
+      ).status,
+      200,
+    );
+    const visitor = await register(
+      f,
+      "promoted-visitor@example.test",
+      "visitor",
+    );
+    assert.equal(
+      (await update(visitor.user.id, { role: "requester" })).status,
+      400,
+    );
+    assert.equal(
+      (
+        await update(visitor.user.id, {
+          role: "requester",
+          companyName: "Empresa de promoção",
+          cnpj: "12345678000195",
+        })
+      ).status,
+      200,
+    );
+  } finally {
+    await f.close();
+  }
+});
+
+test("Version 2 company migration is additive, preserves existing data and allows legacy login after restart", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "univille-company-migration-"));
+  const dbPath = join(directory, "events.sqlite");
+  let db = openDatabase(dbPath);
+  let server;
+  try {
+    const encoded = await hashPassword(PASSWORD);
+    db.prepare(
+      "INSERT INTO users(id,name,email,passwordHash,role,createdAt) VALUES ('legacy-owner','Pessoa antiga','legacy-owner@example.test',?,'requester',?)",
+    ).run(encoded, fixedNow().toISOString());
+    db.exec(`INSERT INTO events(id,authorId,name,status,createdAt,updatedAt) VALUES ('legacy-event','legacy-owner','Pedido preservado','draft','2026-10-22T10:00:00.000Z','2026-10-22T10:00:00.000Z');
+      INSERT INTO sessions(tokenHash,userId,expiresAt) VALUES ('legacy-session','legacy-owner',9999999999999);
+      INSERT INTO themes(id,name) VALUES ('legacy-theme','Tema preservado');
+      INSERT INTO auditLog(actorId,action,entityId,createdAt) VALUES ('legacy-owner','request.created','legacy-event','2026-10-22T10:00:00.000Z');
+      ALTER TABLE users DROP COLUMN companyName;
+      ALTER TABLE users DROP COLUMN cnpj;
+      PRAGMA user_version=2;`);
+    const snapshot = Object.fromEntries(
+      ["users", "events", "sessions", "themes", "auditLog"].map((table) => [
+        table,
+        db.prepare(`SELECT * FROM ${table}`).all(),
+      ]),
+    );
+    db.close();
+    const app = createApp({ dbPath, now: fixedNow });
+    db = app.locals.db;
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+    const migrated = db
+      .prepare("SELECT * FROM users WHERE id='legacy-owner'")
+      .get();
+    assert.equal(migrated.companyName, "");
+    assert.equal(migrated.cnpj, "");
+    const { companyName, cnpj, ...legacyUser } = migrated;
+    assert.deepEqual(legacyUser, { ...snapshot.users[0] });
+    for (const table of ["events", "sessions", "themes", "auditLog"])
+      assert.deepEqual(
+        db.prepare(`SELECT * FROM ${table}`).all(),
+        snapshot[table],
+      );
+    server = app.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const login = await fetch(
+      `http://127.0.0.1:${server.address().port}/api/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "legacy-owner@example.test",
+          password: PASSWORD,
+        }),
+      },
+    );
+    assert.equal(login.status, 200);
+    assert.equal((await login.json()).user.companyName, "");
+    await new Promise((resolve) => server.close(resolve));
+    server = null;
+    db.prepare(
+      "UPDATE users SET companyName='Empresa adicionada depois',cnpj='12345678000195' WHERE id='legacy-owner'",
+    ).run();
+    const saved = db.prepare("SELECT * FROM users").all();
+    db.close();
+    db = openDatabase(dbPath);
+    assert.equal(db.prepare("PRAGMA user_version").get().user_version, 3);
+    assert.deepEqual(db.prepare("SELECT * FROM users").all(), saved);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM events").get().n, 1);
+  } finally {
+    if (server) await new Promise((resolve) => server.close(resolve));
     db.close();
     rmSync(directory, { recursive: true, force: true });
   }

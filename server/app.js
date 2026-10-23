@@ -25,6 +25,7 @@ import {
   catalogs,
   textField,
   emailField,
+  cnpjField,
   passwordField,
   timestamp,
   publicWindow,
@@ -222,23 +223,53 @@ export function createApp(options = {}) {
   api.get("/auth/me", (req, res) => res.json({ user: publicUser(req.user) }));
   api.post("/auth/register", async (req, res) => {
     rateLimit(req);
-    const name = textField(req.body?.name, "Nome completo", 160, true);
-    const email = emailField(req.body?.email);
-    const password = passwordField(req.body?.password);
-    const role = req.body?.role || "requester";
+    const role = req.body?.role;
+    if (!role)
+      fail(
+        400,
+        "Escolha visitante ou solicitante para criar sua conta.",
+        "VALIDATION_ERROR",
+      );
     if (!["visitor", "requester"].includes(role))
       fail(
         403,
         "Esse perfil não pode ser cadastrado publicamente.",
         "FORBIDDEN",
       );
+    const name =
+      textField(req.body?.name, "Nome completo", 160, role === "requester") ||
+      "Visitante";
+    const email = emailField(req.body?.email);
+    const password = passwordField(req.body?.password);
+    const companyName =
+      role === "requester"
+        ? textField(req.body?.companyName, "Nome da empresa", 200, true)
+        : "";
+    const cnpj = role === "requester" ? cnpjField(req.body?.cnpj, true) : "";
     if (db.prepare("SELECT id FROM users WHERE email=?").get(email))
       fail(409, "Este e-mail já está cadastrado.", "EMAIL_EXISTS");
     const passwordHash = await hashPassword(password);
-    const user = { id: randomUUID(), name, email, role, active: 1 };
+    const user = {
+      id: randomUUID(),
+      name,
+      email,
+      role,
+      active: 1,
+      companyName,
+      cnpj,
+    };
     db.prepare(
-      "INSERT INTO users(id,name,email,passwordHash,role,active,createdAt) VALUES (?,?,?,?,?,1,?)",
-    ).run(user.id, name, email, passwordHash, role, timestamp(now));
+      "INSERT INTO users(id,name,email,passwordHash,role,active,createdAt,companyName,cnpj) VALUES (?,?,?,?,?,1,?,?,?)",
+    ).run(
+      user.id,
+      name,
+      email,
+      passwordHash,
+      role,
+      timestamp(now),
+      companyName,
+      cnpj,
+    );
     issueSession(req, res, user);
     res.status(201).json({ user: publicUser(user) });
   });
@@ -757,6 +788,18 @@ function installUserRoutes(api, db, admin, now, recheckAdmin) {
     const password = passwordField(req.body?.password);
     const role = req.body?.role;
     if (!roles.has(role)) fail(400, "Perfil inválido.", "VALIDATION_ERROR");
+    const companyName = textField(
+      req.body?.companyName,
+      "Nome da empresa",
+      200,
+      role === "requester",
+    );
+    const cnpj = cnpjField(
+      req.body?.cnpj,
+      role === "requester" || Boolean(companyName),
+    );
+    if (cnpj && !companyName)
+      fail(400, "Nome da empresa: campo obrigatório.", "VALIDATION_ERROR");
     if (req.body.active !== undefined && typeof req.body.active !== "boolean")
       fail(400, "Situação inválida.", "VALIDATION_ERROR");
     const encoded = await hashPassword(password);
@@ -766,7 +809,7 @@ function installUserRoutes(api, db, admin, now, recheckAdmin) {
         fail(409, "Este e-mail já está cadastrado.", "EMAIL_EXISTS");
       const id = randomUUID();
       db.prepare(
-        "INSERT INTO users(id,name,email,passwordHash,role,active,createdAt) VALUES (?,?,?,?,?,?,?)",
+        "INSERT INTO users(id,name,email,passwordHash,role,active,createdAt,companyName,cnpj) VALUES (?,?,?,?,?,?,?,?,?)",
       ).run(
         id,
         name,
@@ -775,6 +818,8 @@ function installUserRoutes(api, db, admin, now, recheckAdmin) {
         role,
         Number(req.body.active ?? true),
         timestamp(now),
+        companyName,
+        cnpj,
       );
       audit(db, req.user.id, "user.created", id, now);
       return findUser(id);
@@ -801,6 +846,23 @@ function installUserRoutes(api, db, admin, now, recheckAdmin) {
     const user = transaction(db, () => {
       recheckAdmin(req);
       const current = findUser(req.params.id);
+      const companyName = textField(
+        req.body?.companyName ?? current.companyName,
+        "Nome da empresa",
+        200,
+      );
+      const cnpj = cnpjField(req.body?.cnpj ?? current.cnpj);
+      const needsCompany =
+        Boolean(companyName || cnpj) ||
+        (role === "requester" &&
+          (current.role !== "requester" ||
+            Boolean(current.companyName || current.cnpj)));
+      if (needsCompany && (!companyName || !cnpj))
+        fail(
+          400,
+          "Informe o nome da empresa e um CNPJ válido.",
+          "VALIDATION_ERROR",
+        );
       if (current.id === req.user.id && (!active || role !== "admin"))
         fail(
           409,
@@ -825,13 +887,15 @@ function installUserRoutes(api, db, admin, now, recheckAdmin) {
       )
         fail(409, "Este e-mail já está cadastrado.", "EMAIL_EXISTS");
       db.prepare(
-        "UPDATE users SET name=?,email=?,role=?,active=?,passwordHash=? WHERE id=?",
+        "UPDATE users SET name=?,email=?,role=?,active=?,passwordHash=?,companyName=?,cnpj=? WHERE id=?",
       ).run(
         name,
         email,
         role,
         Number(active),
         encoded || current.passwordHash,
+        companyName,
+        cnpj,
         current.id,
       );
       if (!active || encoded || role !== current.role)

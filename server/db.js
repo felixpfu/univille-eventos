@@ -63,7 +63,29 @@ export function openDatabase(path = databasePath()) {
     );
   `);
   migrateEventQueue(db);
+  migrateCompanyDetails(db);
   return db;
+}
+
+function migrateCompanyDetails(db) {
+  if (db.prepare("PRAGMA user_version").get().user_version >= 3) return;
+  transaction(db, () => {
+    const columns = new Set(
+      db
+        .prepare("PRAGMA table_info(users)")
+        .all()
+        .map((row) => row.name),
+    );
+    // Empty values preserve legacy accounts without inventing company data or
+    // preventing an existing user from signing in.
+    for (const name of ["companyName", "cnpj"]) {
+      if (!columns.has(name))
+        db.exec(
+          `ALTER TABLE users ADD COLUMN ${name} TEXT NOT NULL DEFAULT ''`,
+        );
+    }
+    db.exec("PRAGMA user_version = 3");
+  });
 }
 
 // Additive migration: published accounts, requests and audit history remain intact.

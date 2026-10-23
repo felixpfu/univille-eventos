@@ -1081,17 +1081,49 @@ function AuthModal({ onClose, onSuccess }) {
     [name, setName] = useState(""),
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
-    [role, setRole] = useState("requester"),
+    [role, setRole] = useState(null),
+    [companyName, setCompanyName] = useState(""),
+    [cnpj, setCnpj] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
+  const emailRef = useRef(null),
+    nameRef = useRef(null),
+    firstRoleRef = useRef(null);
+  const registering = mode === "register",
+    choosingRole = registering && !role,
+    requester = registering && role === "requester";
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const target = choosingRole
+        ? firstRoleRef.current
+        : requester
+          ? nameRef.current
+          : emailRef.current;
+      target?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [mode, role]);
+  const changeMode = (nextMode) => {
+    setMode(nextMode);
+    setRole(null);
+    setError("");
+  };
   const submit = async (e) => {
     e.preventDefault();
+    if (busy || choosingRole) return;
     setBusy(true);
     setError("");
     try {
       const result = await api(`/auth/${mode}`, {
         method: "POST",
-        body: { name, email, password, role },
+        body: registering
+          ? {
+              email,
+              password,
+              role,
+              ...(requester ? { name, companyName, cnpj } : {}),
+            }
+          : { email, password },
       });
       await onSuccess(result.user);
     } catch (e) {
@@ -1111,121 +1143,196 @@ function AuthModal({ onClose, onSuccess }) {
         if (!busy) onClose();
       }}
     >
-      <p className="modal-intro">
-        {mode === "login"
-          ? "Entre com seu e-mail para acessar sua área."
-          : "Crie sua conta para acompanhar a agenda ou solicitar eventos."}
-      </p>
-      <div className="tabs auth-tabs">
-        <button
-          className={mode === "login" ? "active" : ""}
-          onClick={() => {
-            setMode("login");
-            setError("");
-          }}
-        >
-          Entrar
-        </button>
-        <button
-          className={mode === "register" ? "active" : ""}
-          onClick={() => {
-            setMode("register");
-            setError("");
-          }}
-        >
-          Criar conta
-        </button>
-      </div>
-      <form onSubmit={submit} className="stack">
-        {mode === "register" && (
-          <label className="field">
-            Nome completo
-            <input
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              maxLength={120}
-            />
-          </label>
-        )}
-        <label className="field">
-          E-mail
-          <input
-            type="email"
-            autoComplete="email"
-            placeholder="voce@exemplo.com.br"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            maxLength={254}
-          />
-        </label>
-        <label className="field">
-          Senha
-          <input
-            type="password"
-            minLength={mode === "register" ? 12 : 1}
-            autoComplete={
-              mode === "register" ? "new-password" : "current-password"
-            }
-            placeholder={
-              mode === "register" ? "Pelo menos 12 caracteres" : "Sua senha"
-            }
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            maxLength={128}
-          />
-        </label>
-        {mode === "register" && (
-          <fieldset className="role-choice">
-            <legend>Como você quer usar a agenda?</legend>
-            <label className={role === "requester" ? "selected" : ""}>
-              <input
-                type="radio"
-                name="role"
-                checked={role === "requester"}
-                onChange={() => setRole("requester")}
-              />
-              <span>
-                <strong>Solicitante</strong>
-                <small>Quero propor e acompanhar eventos.</small>
-              </span>
-            </label>
-            <label className={role === "visitor" ? "selected" : ""}>
-              <input
-                type="radio"
-                name="role"
-                checked={role === "visitor"}
-                onChange={() => setRole("visitor")}
-              />
+      <div className="auth-modal">
+        <p className="modal-intro">
+          {mode === "login"
+            ? "Entre com seu e-mail para acessar sua área."
+            : choosingRole
+              ? "Primeiro, escolha como você quer usar a agenda."
+              : "Preencha os dados do perfil escolhido para criar sua conta."}
+        </p>
+        <div className="tabs auth-tabs">
+          <button
+            type="button"
+            className={mode === "login" ? "active" : ""}
+            aria-pressed={mode === "login"}
+            disabled={busy}
+            onClick={() => changeMode("login")}
+          >
+            Entrar
+          </button>
+          <button
+            type="button"
+            className={mode === "register" ? "active" : ""}
+            aria-pressed={mode === "register"}
+            disabled={busy}
+            onClick={() => changeMode("register")}
+          >
+            Criar conta
+          </button>
+        </div>
+        {choosingRole ? (
+          <fieldset className="auth-role-choice">
+            <legend>Qual conta você quer criar?</legend>
+            <button
+              type="button"
+              className="auth-role-option"
+              ref={firstRoleRef}
+              onClick={() => setRole("visitor")}
+            >
+              <UserRound size={25} aria-hidden="true" />
               <span>
                 <strong>Visitante</strong>
-                <small>Quero consultar os próximos encontros.</small>
+                <small>Acompanhe os eventos. Apenas e-mail e senha.</small>
               </span>
-            </label>
+              <ArrowRight size={19} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              className="auth-role-option"
+              onClick={() => setRole("requester")}
+            >
+              <Building2 size={25} aria-hidden="true" />
+              <span>
+                <strong>Solicitante</strong>
+                <small>
+                  Proponha eventos. Informe também seu nome, empresa e CNPJ.
+                </small>
+              </span>
+              <ArrowRight size={19} aria-hidden="true" />
+            </button>
           </fieldset>
+        ) : (
+          <form
+            onSubmit={submit}
+            className="stack auth-fields"
+            aria-busy={busy}
+          >
+            {registering && (
+              <div className="auth-profile-summary">
+                <span>
+                  <strong>
+                    {requester ? "Conta de solicitante" : "Conta de visitante"}
+                  </strong>
+                  <small>
+                    {requester
+                      ? "Para propor e acompanhar seus eventos."
+                      : "Para acompanhar a agenda de eventos."}
+                  </small>
+                </span>
+                <button
+                  type="button"
+                  className="auth-switch-role"
+                  disabled={busy}
+                  onClick={() => {
+                    setRole(null);
+                    setError("");
+                  }}
+                >
+                  Mudar perfil
+                </button>
+              </div>
+            )}
+            {requester && (
+              <label className="field">
+                Nome completo
+                <input
+                  ref={nameRef}
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  disabled={busy}
+                  maxLength={160}
+                />
+              </label>
+            )}
+            <label className="field">
+              E-mail
+              <input
+                ref={emailRef}
+                type="email"
+                autoComplete="email"
+                placeholder="voce@exemplo.com.br"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={busy}
+                maxLength={254}
+              />
+            </label>
+            <label className="field">
+              Senha
+              <input
+                type="password"
+                minLength={mode === "register" ? 12 : 1}
+                autoComplete={
+                  mode === "register" ? "new-password" : "current-password"
+                }
+                placeholder={
+                  mode === "register" ? "Pelo menos 12 caracteres" : "Sua senha"
+                }
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={busy}
+                maxLength={128}
+              />
+            </label>
+            {requester && (
+              <>
+                <label className="field">
+                  Nome da empresa
+                  <input
+                    autoComplete="organization"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
+                    disabled={busy}
+                    maxLength={200}
+                  />
+                </label>
+                <label className="field">
+                  CNPJ da empresa
+                  <input
+                    type="text"
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    aria-describedby="auth-cnpj-help"
+                    value={cnpj}
+                    onChange={(e) => setCnpj(e.target.value.toUpperCase())}
+                    required
+                    disabled={busy}
+                    maxLength={18}
+                  />
+                  <small id="auth-cnpj-help" className="field-hint">
+                    Informe o CNPJ com ou sem pontuação.
+                  </small>
+                </label>
+              </>
+            )}
+            {error && (
+              <div className="inline-error" role="alert">
+                {error}
+              </div>
+            )}
+            <button className="button primary full" disabled={busy}>
+              {busy ? <LoaderCircle size={17} className="spin" /> : null}
+              {busy
+                ? "Aguarde…"
+                : mode === "login"
+                  ? "Entrar na minha conta"
+                  : "Criar minha conta"}
+              {!busy && <ArrowRight size={17} />}
+            </button>
+            <p className="form-help">
+              <LockKeyhole size={13} /> Seu acesso é protegido. As permissões
+              são definidas pela sua conta.
+            </p>
+          </form>
         )}
-        {error && (
-          <div className="inline-error" role="alert">
-            {error}
-          </div>
-        )}
-        <button className="button primary full" disabled={busy}>
-          {busy ? <LoaderCircle size={17} className="spin" /> : null}
-          {busy
-            ? "Aguarde…"
-            : mode === "login"
-              ? "Entrar na minha conta"
-              : "Criar minha conta"}
-          {!busy && <ArrowRight size={17} />}
-        </button>
-        <p className="form-help">
-          <LockKeyhole size={13} /> Seu acesso é protegido. As permissões são
-          definidas pela sua conta.
-        </p>
-      </form>
+      </div>
     </Modal>
   );
 }

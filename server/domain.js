@@ -39,6 +39,43 @@ export function emailField(value) {
     fail(400, "Informe um e-mail válido.", "VALIDATION_ERROR");
   return email;
 }
+export function cnpjField(value, required = false) {
+  const input = textField(value, "CNPJ", 18, required);
+  if (!input) return "";
+  const normalized = input.toUpperCase();
+  if (
+    /[^A-Za-z0-9./-]/.test(input) ||
+    !/^(?:[A-Z0-9]{12}\d{2}|[A-Z0-9]{2}\.[A-Z0-9]{3}\.[A-Z0-9]{3}\/[A-Z0-9]{4}-\d{2})$/.test(
+      normalized,
+    )
+  )
+    fail(
+      400,
+      "Informe um CNPJ válido, com ou sem pontuação.",
+      "VALIDATION_ERROR",
+    );
+  const cnpj = normalized.replace(/[.\/-]/g, "");
+  // Receita Federal / Serpro: ASCII minus 48, modulus 11, right-to-left
+  // weights 2..9. This also validates existing numeric CNPJs unchanged.
+  const digit = (base) => {
+    let total = 0;
+    for (let index = base.length - 1, weight = 2; index >= 0; index--) {
+      total += (base.charCodeAt(index) - 48) * weight;
+      weight = weight === 9 ? 2 : weight + 1;
+    }
+    const remainder = total % 11;
+    return String(remainder < 2 ? 0 : 11 - remainder);
+  };
+  const base = cnpj.slice(0, 12);
+  const first = digit(base);
+  if (/^(\d)\1{13}$/.test(cnpj) || cnpj !== base + first + digit(base + first))
+    fail(
+      400,
+      "Informe um CNPJ com dígitos verificadores válidos.",
+      "VALIDATION_ERROR",
+    );
+  return cnpj;
+}
 export function passwordField(value) {
   if (typeof value !== "string" || value.length < 12 || value.length > 128)
     fail(

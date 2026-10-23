@@ -28,6 +28,8 @@ export const publicUser = (row) =>
         email: row.email,
         role: row.role,
         active: Boolean(row.active),
+        companyName: row.companyName || "",
+        cnpj: row.cnpj || "",
       }
     : null;
 

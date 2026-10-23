@@ -14,6 +14,12 @@ O setor de Eventos opera por contas administrativas, sem quarto perfil. Autor au
 
 Há um login comum. O cadastro público permite visitante e solicitante; administrador não aparece como opção. A primeira conta administrativa é criada pela CLI, sem senha padrão. Administradores posteriores exigem sessão administrativa autorizada; não se permite remover o último administrador ativo.
 
+Ao iniciar o cadastro, a pessoa escolhe explicitamente **Visitante** ou **Solicitante**. Visitante informa apenas e-mail e senha; seu nome interno padrão é “Visitante”. Solicitante informa nome completo, e-mail, senha, nome da empresa (até 200 caracteres) e CNPJ. A API exige o perfil explícito, valida os campos conforme a escolha e bloqueia a criação pública de administradores.
+
+O CNPJ aceita a forma numérica e a alfanumérica, com ou sem máscara, e é persistido em maiúsculas sem pontuação. Os dois dígitos verificadores seguem o [algoritmo oficial da Receita Federal/Serpro](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/documentos-tecnicos/cnpj/manual-dv-cnpj.pdf). A validação verifica formato e dígitos; não consulta inscrição, situação cadastral ou vínculo da pessoa com a empresa. Os formatos coexistem conforme a [Receita Federal](https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/cnpj-alfanumerico/cnpj-alfa).
+
+Nome da empresa e CNPJ são dados da conta: aparecem somente nas respostas autenticadas da própria conta e na administração de usuários. Não são incluídos na agenda pública, metadados públicos ou dados de um evento. As contas existentes continuam entrando sem exigir complemento empresarial. A administração pode editar essas contas legadas sem inventar dados; quando acrescenta dados empresariais, deve informar o par completo e válido. Novas contas solicitantes criadas pela administração e mudanças de outro perfil para solicitante exigem empresa e CNPJ.
+
 ## Agenda e identidade visual
 
 A agenda contém exclusivamente aprovados do **mês atual e dos dois seguintes**, no fuso `America/Sao_Paulo`, em ordem cronológica. Não é uma janela móvel de 90 dias. Calendário é a visualização inicial, com aba alternativa em lista, busca e filtros por setor/curso, tema e ambiente. A interface utiliza marca oficial da Univille, tema claro padrão, modo escuro opcional e layout responsivo.

@@ -716,6 +716,8 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
     setForm({
       name: row?.name || "",
       email: row?.email || "",
+      companyName: row?.companyName || "",
+      cnpj: row?.cnpj || "",
       password: "",
       role: row?.role || "requester",
       active: row ? Boolean(row.active) : true,
@@ -730,6 +732,8 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
         ...form,
         name: form.name.trim(),
         email: form.email.trim(),
+        companyName: form.companyName.trim(),
+        cnpj: form.cnpj.trim(),
       };
       if (!body.password) delete body.password;
       await api(`/admin/users${editing ? `/${editing.id}` : ""}`, {
@@ -749,7 +753,7 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
   const visible = users.filter(
     (row) =>
       !search ||
-      `${row.name} ${row.email}`
+      `${row.name} ${row.email} ${row.companyName || ""} ${row.cnpj || ""}`
         .toLocaleLowerCase("pt-BR")
         .includes(search.toLocaleLowerCase("pt-BR")),
   );
@@ -775,7 +779,7 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
             <Search size={18} aria-hidden="true" />
             <input
               type="search"
-              placeholder="Nome ou e-mail"
+              placeholder="Nome, e-mail, empresa ou CNPJ"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -824,6 +828,8 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
                         )}
                       </strong>
                       <small>{row.email}</small>
+                      {row.companyName && <small>{row.companyName}</small>}
+                      {row.cnpj && <small>CNPJ: {row.cnpj}</small>}
                     </td>
                     <td>{ROLES[row.role] || row.role}</td>
                     <td>
@@ -921,6 +927,54 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
                 ))}
               </select>
             </label>
+            {form.role === "requester" && (
+              <>
+                <label className="field">
+                  <span>Nome da empresa</span>
+                  <input
+                    required={
+                      !editing ||
+                      editing.role !== "requester" ||
+                      Boolean(editing.companyName || editing.cnpj)
+                    }
+                    autoComplete="organization"
+                    maxLength={200}
+                    value={form.companyName}
+                    onChange={(event) =>
+                      setForm({ ...form, companyName: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="field">
+                  <span>CNPJ</span>
+                  <input
+                    required={
+                      !editing ||
+                      editing.role !== "requester" ||
+                      Boolean(editing.companyName || editing.cnpj)
+                    }
+                    type="text"
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={18}
+                    value={form.cnpj}
+                    onChange={(event) =>
+                      setForm({
+                        ...form,
+                        cnpj: event.target.value.toUpperCase(),
+                      })
+                    }
+                  />
+                  {editing && !editing.companyName && !editing.cnpj && (
+                    <small className="muted">
+                      Conta anterior ao cadastro de empresa. Para completar os
+                      dados, informe a empresa e o CNPJ juntos.
+                    </small>
+                  )}
+                </label>
+              </>
+            )}
             <label className="checkbox-option">
               <input
                 type="checkbox"

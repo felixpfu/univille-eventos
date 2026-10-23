@@ -12,7 +12,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão funcional registrou **24 testes aprovados**: 12 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
+A revisão funcional da v1.2.0 registrou **28 testes aprovados**: 16 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
 
 | Grupo                     | Evidências                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -34,6 +34,8 @@ As integrações do backend utilizam servidor HTTP e SQLite reais. Somente o tra
 
 A revisão no navegador usou janelas de **1440 × 1000** e **390 × 844**, sem rolagem horizontal da página. Foram conferidos calendário inicial, navegação em lista, aplicação de período anual de 1º de janeiro a 31 de dezembro, download semanal de PowerPoint pela interface e salvamento do consentimento com o aviso explícito de SMTP indisponível. As telas utilizam São Bento do Sul, a marca institucional original e tema claro padrão.
 
+Na v1.2.0, foram conferidos os dois fluxos de cadastro, a recusa de CNPJ inválido e sua correção sem duplicar a conta, e a consulta administrativa de empresa/CNPJ. A revisão visual usou 1440 × 1000, 390 × 844 e 320 × 844. Na comparação entre claro/escuro, 52 elementos do cabeçalho/calendário em desktop mantiveram as mesmas medidas e posições; o cabeçalho e os elementos comparados em celular e administração também permaneceram alinhados. Não houve rolagem horizontal da página nos cenários conferidos. A tipografia usa corpo e campos de 16 px ou mais, controles de 14–16 px e auxiliares de no mínimo 12 px.
+
 O roteiro deve ser repetido após mudanças visuais ou de fluxo. Essas verificações pontuais não constituem uma suíte permanente de navegador nem uma avaliação completa em todos os dispositivos.
 
 A apresentação foi reconstruída a partir da fotografia. Na revisão de 23/10/2026, apresentações fictícias com seis eventos, período vazio e campo longo foram renderizadas com LibreOffice e todos os slides foram inspecionados. Foram conferidos cabeçalho, tabela, rodapé, legibilidade e continuação. Isso não prova identidade exata com o PPTX original, que não foi fornecido. Detalhes em [PPTX.md](PPTX.md).
@@ -42,7 +44,7 @@ A apresentação foi reconstruída a partir da fotografia. Na revisão de 23/10/
 
 O pacote de release executa testes e build antes da transferência. O instalador usa dependências de produção pelo lockfile, mantém os dados fora das releases e verifica `/api/health` e a página em localhost. Com `--publish`, também verifica ambos pelo HTTPS e hostname reais. O registro da publicação deve identificar o commit/release efetivamente ativo e o resultado das verificações, sem credenciais.
 
-Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. A migração v2 é aditiva; cópia de base de desenvolvimento não integra a publicação. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
+Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e-mail. As migrações v2 e v3 são aditivas; cópia de base de desenvolvimento não integra a publicação. O timer SMTP só é habilitado quando a configuração necessária está disponível. Nesta entrega, não há provedor definido e o timer permanece desativado. Procedimentos em [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Roteiro de aceite
 
@@ -50,7 +52,7 @@ Use dados fictícios e sessões separadas de visitante, solicitante e administra
 
 1. Sem login, confira o campus, a marca, o calendário inicial, a aba de lista, os três meses permitidos e filtros. Confirme a ausência de informações internas na agenda pública.
 2. Cadastre centro de custo, recurso, ambiente com recurso, setor/curso com centro e tema. Confirme as restrições de exclusão por vínculo.
-3. Crie solicitante e visitante; confira que não há cadastro público de administrador e que os perfis não acessam ações alheias.
+3. Em Criar conta, confira a escolha inicial de perfil sem campos ou perfil pré-selecionado. Cadastre visitante só com e-mail/senha e solicitante com nome, e-mail, senha, empresa e CNPJ. Confira recusa de CNPJ inválido, persistência dos dados empresariais e sua ausência na agenda pública. Verifique que não há cadastro público de administrador e que os perfis não acessam ações alheias.
 4. Salve e reabra rascunho incompleto. Complete **Realização**, curso/semestre do público quando cabíveis, centro automático e respostas Sim/Não.
 5. Envie dois pendentes conflitantes. Tente aprovar o segundo primeiro e confira a recusa indicando o protocolo anterior. Rejeite o primeiro, confira o motivo para o autor e teste reenvio com nova posição.
 6. Corrija apenas o título de um pendente e confira a posição preservada. Mude local/data/horário e confira a nova posição. Após aprovação, confirme a agenda e os bloqueios de sobreposição.
