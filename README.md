@@ -19,9 +19,11 @@ O login é comum aos três perfis e o servidor decide o acesso pela conta. O cad
 
 A **Gestão de eventos** abre em **Todos os status**, incluindo os aprovados já publicados na agenda. O filtro **Aguardando aprovação** permite consultar apenas a fila pendente. Rascunhos continuam na área do próprio autor.
 
-A página inicial destaca o calendário e oferece uma aba em lista, busca e filtros por setor/curso, tema e ambiente. O tema claro é o padrão, com modo escuro opcional e layout para computador e celular. A interface e o PowerPoint utilizam a [marca oficial, com origem documentada](public/branding/SOURCE.md).
+A página inicial abre na aba **Calendário**, mantendo a grade, a navegação pelos três meses e os filtros por setor/curso, tema e ambiente. Os cards e resumos dos eventos aparecem apenas na aba **Lista**. Clicar em um dia do calendário abre a lista filtrada naquela data; **Ver todos** limpa esse recorte por dia. A busca e os demais filtros continuam disponíveis nas duas visualizações. O tema claro é o padrão, com modo escuro opcional e layout para computador e celular. A interface e o PowerPoint utilizam a [marca oficial, com origem documentada](public/branding/SOURCE.md).
 
 Os eventos aprovados têm descrição pública opcional e detalhes de participação por curso e semestres. A descrição é um campo explícito: objetivo, justificativa e observações continuam internos. O botão **Ver detalhes** reúne essas informações para visitantes.
+
+**Sair da conta, cancelar um evento, excluir um rascunho ou cadastro, rejeitar uma solicitação, desativar uma conta e reduzir seu acesso** pedem confirmação com opção de **Voltar**. Os botões dessas ações usam fundo vermelho e texto branco. **Aprovar/publicar** também pede confirmação, com ação positiva verde. Durante a execução, a interface informa o andamento e impede envios repetidos; ao terminar, apresenta sucesso ou erro. Salvamentos comuns mantêm o indicador de andamento e a mensagem de resultado, sem uma confirmação adicional.
 
 As solicitações registram **Realização** como entidade organizadora própria, público em texto e, opcionalmente, curso e semestre do público. O cadastro de curso/coordenação também representa o setor nos filtros; não existe uma entidade separada de setor. O centro de custo é derivado desse cadastro e os recursos devem pertencer ao ambiente.
 
@@ -91,6 +93,8 @@ npm audit --omit=dev
 ```
 
 A revisão de 23/10/2026 possui **30 testes automatizados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+
+O roteiro específico para a separação entre calendário/lista e as confirmações de ações está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-alteração-de-calendário-e-confirmações). Os registros históricos acima não comprovam a execução desse novo roteiro; os resultados devem ser registrados após verificar a alteração.
 
 O responsável autorizou que **as alterações solicitadas neste projeto sejam versionadas no GitHub e publicadas em flxpfu.com.br** após verificação. A autorização está registrada em [AGENTS.md](AGENTS.md). O procedimento de empacotar, publicar, verificar a versão ativa e reverter está em [DEPLOYMENT.md](docs/DEPLOYMENT.md). O site anterior e os snapshots de atualização são preservados.
 

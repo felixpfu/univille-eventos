@@ -54,18 +54,39 @@ Antes do snapshot SQLite, o instalador interrompe o serviço web e o worker de e
 
 Use dados fictícios e sessões separadas de visitante, solicitante e administrador.
 
-1. Sem login, confira o campus, a marca, o calendário inicial, a aba de lista, os três meses permitidos e filtros. Confirme a ausência de informações internas na agenda pública.
+1. Sem login, confira o campus, a marca e a aba **Calendário** inicial com grade, três meses e filtros. Confira cards/resumos somente na aba **Lista**. Clique em um dia, confirme a lista restrita à data e use **Ver todos** para limpar esse recorte. Confirme a ausência de informações internas na agenda pública.
 2. Cadastre centro de custo, recurso, ambiente com recurso, setor/curso com centro e tema. Confirme as restrições de exclusão por vínculo.
 3. Em Criar conta, confira a escolha inicial de perfil sem campos ou perfil pré-selecionado. Cadastre visitante só com e-mail/senha e solicitante com nome, e-mail, senha, empresa e CNPJ. Confira recusa de CNPJ inválido, persistência dos dados empresariais e sua ausência na agenda pública. Verifique que não há cadastro público de administrador e que os perfis não acessam ações alheias.
 4. Salve e reabra rascunho incompleto. Complete **Realização**, curso/semestre do público quando cabíveis, centro automático e respostas Sim/Não.
 5. Envie dois pendentes conflitantes. Tente aprovar o segundo primeiro e confira a recusa indicando o protocolo anterior. Rejeite o primeiro, confira o motivo para o autor e teste reenvio com nova posição.
 6. Corrija apenas o título de um pendente e confira a posição preservada. Mude local/data/horário e confira a nova posição. Após aprovação, confirme a agenda e os bloqueios de sobreposição.
-7. Edite/cancele um aprovado como administrador; cancele um pendente próprio e exclua um rascunho próprio. Confira a preservação dos registros enviados.
+7. Edite/cancele um aprovado como administrador; cancele um pendente próprio e exclua um rascunho próprio. Confira as confirmações de cancelamento e exclusão, a opção de voltar sem executar e a preservação dos registros enviados.
 8. Nos relatórios, escolha semana, ano e período personalizado; combine setor, tema e estado. Compare tabela/CSV. Abra o PowerPoint e confira as oito colunas, só aprovados, identidade visual e várias páginas quando necessário.
 9. Na conta, salve/desative notificações. Sem SMTP, confira o aviso de indisponibilidade e que não há alegação de envio. A confirmação por link e entrega real devem ser aceitas separadamente, após configurar um provedor e autorizar uma conta de teste.
-10. Troque a senha e confirme a revogação de sessões antigas. Desative uma conta e confira perda de acesso; preserve o último administrador ativo.
+10. Troque a senha e confirme a revogação de sessões antigas. Confira as confirmações antes de sair da conta, desativar outra conta ou reduzir seu acesso; use **Voltar** antes de repetir e confirmar. Confira perda de acesso após a desativação e preserve o último administrador ativo.
 11. Repita navegação, filtros, formulário e diálogos em computador e celular. Confira foco de teclado, rolagem, rótulos e mensagens de erro.
 12. Após publicar, abra o domínio real e confira os fluxos alterados, a nova versão dos assets e a persistência de contas/eventos existentes.
+
+## Aceite da alteração de calendário e confirmações
+
+Na v1.4.0, a revisão local usou dados inteiramente fictícios e janelas de 1280 × 720 e 390 × 844. Foram conferidos: calendário sem cards abaixo da grade; seleção de um dia abrindo a lista com um único evento; remoção do recorte retornando aos oito exemplos; aprovação, cancelamento e saída com **Voltar** preservando o estado antes da confirmação; confirmação efetiva com mensagem de sucesso; desativação de visitante somente após confirmar; preservação dos campos ao voltar para edição; edição comum direta; e abertura/retorno da exclusão de cadastro sem excluir. O estado de solicitação e de usuário foi conferido também pela API/banco local. Os botões destrutivos apresentaram fundo `rgb(180, 35, 24)` e texto `rgb(255, 255, 255)` nos temas claro e escuro. A tela de 390 px não apresentou rolagem horizontal da página e a confirmação de saída permaneceu dentro da largura disponível. Não houve alteração de senha ou mutação de dados de produção nesses testes.
+
+O roteiro abaixo reúne os casos de aceite para futuras revisões; o registro acima identifica os casos efetivamente executados nesta versão.
+
+| Caso | Procedimento e resultado esperado |
+| --- | --- |
+| Calendário inicial | Abra a agenda em uma nova sessão. **Calendário** deve ser a aba padrão, com grade, navegação dos três meses e filtros; cards e resumos de eventos não devem aparecer abaixo da grade. |
+| Lista e filtros | Abra **Lista**, pesquise e combine setor/curso, tema e ambiente. Os cards/resumos devem aparecer nesta aba e respeitar os filtros. Alterne para Calendário e confira a grade e os filtros disponíveis. |
+| Seleção de dia | Na grade, clique em uma data com eventos fictícios e depois em uma sem eventos. A interface deve abrir **Lista**, identificar a data escolhida e mostrar somente seus resultados ou o estado vazio correspondente. |
+| Limpar o dia | Com uma data selecionada, clique em **Ver todos**. O recorte daquela data deve ser removido e a lista deve voltar a considerar o período disponível, respeitando os demais filtros ativos. |
+| Ações destrutivas | Exercite **Sair da conta**, cancelar um pendente próprio, cancelar um aprovado como administrador, excluir um rascunho, rejeitar uma solicitação com motivo, desativar uma conta e reduzir seu acesso. Cada ação deve abrir confirmação, explicar a operação e oferecer **Voltar**. O botão de confirmação deve ter fundo vermelho e texto branco. |
+| Voltar sem executar | Em cada confirmação destrutiva, escolha **Voltar**. Confira que a sessão, o registro, o estado ou o acesso continuam como antes e que a operação não foi enviada ao servidor. Reabra para testar a confirmação efetiva. |
+| Aprovar/publicar | Abra a aprovação de uma solicitação válida. A confirmação deve apresentar a publicação resultante e usar ação positiva verde. Volte sem executar e depois confirme; o evento só deve aparecer na agenda pública após o sucesso da aprovação. |
+| Andamento e resultado | Em uma cópia local com dados fictícios, use atraso e falha de rede para conferir o indicador de andamento e o bloqueio de cliques repetidos. Após sucesso, confira a mensagem e o estado atualizado. Após erro, confira a mensagem, a ausência de sucesso indevido e a possibilidade de tentar novamente. |
+| Salvar comum | Salve uma alteração de formulário que não seja destrutiva. Confira o estado ocupado durante a solicitação e a mensagem de sucesso ou erro, mantendo o fluxo de salvamento sem confirmação adicional. |
+| Desktop, celular e teclado | Repita calendário, seleção/limpeza de dia e confirmações em computador e celular. Confira foco no diálogo, acesso aos botões por teclado, contraste dos botões vermelhos com texto branco, legibilidade da ação verde e ausência de rolagem horizontal da página. |
+
+As confirmações da interface não substituem as verificações de permissão, vínculo, conflito e preservação do último administrador no servidor. Inclua casos recusados pelo servidor para conferir a apresentação do erro e a manutenção do estado anterior.
 
 ## Medição isolada das listagens
 

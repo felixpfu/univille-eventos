@@ -317,8 +317,10 @@ function App() {
       navigate("agenda");
       await refreshMetadata();
       notify("Você saiu da sua conta.");
+      return true;
     } catch (e) {
       notify(e.message, "error");
+      return false;
     }
   };
   const requester = user && ["requester", "admin"].includes(user.role);
@@ -589,9 +591,7 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
           .includes(search.toLocaleLowerCase("pt-BR"))),
   );
   const monthEvents = matching.filter((e) => e.date.startsWith(prefix));
-  const visible = (view === "calendar" ? monthEvents : matching).filter(
-    (e) => !day || e.date === day,
-  );
+  const visible = matching.filter((e) => !day || e.date === day);
   const hasFilters = search || themeId || roomId || courseId || day;
   return (
     <>
@@ -781,65 +781,78 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
             </button>
           </div>
         )}
-        {view === "calendar" && (
-          <Calendar
-            month={month}
-            year={year}
-            events={monthEvents}
-            day={day}
-            setDay={setDay}
-          />
-        )}
-        <div className="list-section-heading">
-          <h3>
-            {day
-              ? `Eventos de ${dateFormat(day)}`
-              : view === "calendar"
-                ? "Encontros deste mês"
-                : "Todos os encontros"}
-          </h3>
-          {day ? (
-            <button className="text-button" onClick={() => setDay("")}>
-              Ver mês completo <X size={14} />
-            </button>
-          ) : (
-            <span className="count-pill">{visible.length}</span>
-          )}
-        </div>
-        {loading ? (
-          <div className="loading-state">
-            <LoaderCircle className="spin" size={19} />
-            Atualizando eventos…
-          </div>
-        ) : visible.length ? (
-          <div className="event-list">
-            {visible.map((event) => (
-              <EventRow
-                key={event.id}
-                event={event}
-                onDetails={() => setEventDetails(event)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="public-empty">
-            <CalendarDays size={30} strokeWidth={1.2} />
-            <h3>
-              {hasFilters
-                ? "Nenhum evento encontrado."
-                : "Novos encontros vão aparecer por aqui."}
-            </h3>
-            <p>
-              {hasFilters
-                ? "Experimente outro período ou ajuste os filtros."
-                : "Os eventos são publicados assim que a administração os aprova."}
+        {view === "calendar" ? (
+          <>
+            <Calendar
+              month={month}
+              year={year}
+              events={monthEvents}
+              day={day}
+              setDay={(selectedDay) => {
+                setDay(selectedDay);
+                if (selectedDay) setView("list");
+              }}
+            />
+            <p className="muted">
+              Selecione um dia para consultar seus eventos na aba Lista.
             </p>
-            {!hasFilters && (
-              <button className="text-button" onClick={onRequest}>
-                Propor um evento <ArrowRight size={15} />
-              </button>
+            {loading && (
+              <div className="loading-state" role="status">
+                <LoaderCircle className="spin" size={19} />
+                Atualizando eventos…
+              </div>
             )}
-          </div>
+          </>
+        ) : (
+          <>
+            <div className="list-section-heading">
+              <h3>
+                {day ? `Eventos de ${dateFormat(day)}` : "Todos os encontros"}
+              </h3>
+              {day ? (
+                <button className="text-button" onClick={() => setDay("")}>
+                  Ver todos os encontros <X size={14} />
+                </button>
+              ) : (
+                <span className="count-pill">{visible.length}</span>
+              )}
+            </div>
+            {loading ? (
+              <div className="loading-state" role="status">
+                <LoaderCircle className="spin" size={19} />
+                Atualizando eventos…
+              </div>
+            ) : visible.length ? (
+              <div className="event-list">
+                {visible.map((event) => (
+                  <EventRow
+                    key={event.id}
+                    event={event}
+                    onDetails={() => setEventDetails(event)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="public-empty">
+                <CalendarDays size={30} strokeWidth={1.2} />
+                <h3>
+                  {hasFilters
+                    ? "Nenhum evento encontrado."
+                    : "Novos encontros vão aparecer por aqui."}
+                </h3>
+                <p>
+                  {hasFilters
+                    ? "Experimente outro período ou ajuste os filtros."
+                    : "Os eventos são publicados assim que a administração os aprova."}
+                </p>
+                {!hasFilters && (
+                  <button className="text-button" onClick={onRequest}>
+                    Propor um evento <ArrowRight size={15} />
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
         <div className="agenda-footnote">
           <ShieldCheck size={14} />
@@ -1474,7 +1487,34 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
     [newPassword, setNew] = useState(""),
     [confirm, setConfirm] = useState(""),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [logoutConfirm, setLogoutConfirm] = useState(false),
+    [loggingOut, setLoggingOut] = useState(false);
+  const logoutButtonRef = useRef(null),
+    logoutBackRef = useRef(null),
+    logoutWasOpenedRef = useRef(false);
+  useEffect(() => {
+    if (logoutConfirm) {
+      logoutWasOpenedRef.current = true;
+      logoutBackRef.current?.focus();
+    } else if (logoutWasOpenedRef.current) logoutButtonRef.current?.focus();
+  }, [logoutConfirm]);
+  const leaveAccount = async () => {
+    if (busy) return;
+    setBusy(true);
+    setLoggingOut(true);
+    setError("");
+    try {
+      const completed = await onLogout();
+      if (completed === false)
+        setError("Não foi possível sair. Tente confirmar novamente.");
+    } catch (e) {
+      setError(e.message || "Não foi possível sair. Tente novamente.");
+    } finally {
+      setBusy(false);
+      setLoggingOut(false);
+    }
+  };
   return (
     <Modal
       title="Minha conta"
@@ -1489,8 +1529,10 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
       </p>
       <form
         className="stack"
+        aria-busy={busy}
         onSubmit={async (e) => {
           e.preventDefault();
+          if (busy || logoutConfirm) return;
           if (newPassword !== confirm) {
             setError("As novas senhas precisam ser iguais.");
             return;
@@ -1518,6 +1560,7 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
             type="password"
             autoComplete="current-password"
             required
+            disabled={busy || logoutConfirm}
             value={currentPassword}
             onChange={(e) => setCurrent(e.target.value)}
           />
@@ -1530,6 +1573,7 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
             minLength={12}
             maxLength={128}
             required
+            disabled={busy || logoutConfirm}
             value={newPassword}
             onChange={(e) => setNew(e.target.value)}
           />
@@ -1542,6 +1586,7 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
             minLength={12}
             maxLength={128}
             required
+            disabled={busy || logoutConfirm}
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
           />
@@ -1551,15 +1596,66 @@ function PasswordModal({ user, onClose, notify, onLogout }) {
             {error}
           </p>
         )}
-        <button className="button primary" disabled={busy}>
-          {busy ? "Salvando…" : "Salvar nova senha"}
+        {busy && (
+          <p role="status" aria-live="polite">
+            {loggingOut ? "Saindo da sua conta…" : "Salvando nova senha…"}
+          </p>
+        )}
+        <button className="button primary" disabled={busy || logoutConfirm}>
+          {busy && !loggingOut ? "Salvando…" : "Salvar nova senha"}
         </button>
       </form>
+      {logoutConfirm && (
+        <div
+          className="action-confirm"
+          role="group"
+          aria-labelledby="logout-confirm-title"
+          aria-describedby="logout-confirm-description"
+          aria-busy={loggingOut}
+        >
+          <h3 id="logout-confirm-title">Sair da sua conta?</h3>
+          <p id="logout-confirm-description">
+            Você precisará entrar novamente para acessar sua conta. Os dados
+            salvos serão mantidos.
+          </p>
+          <div className="form-actions">
+            <button
+              ref={logoutBackRef}
+              className="button"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setLogoutConfirm(false);
+                setError("");
+              }}
+            >
+              Continuar na conta
+            </button>
+            <button
+              className="button danger"
+              type="button"
+              disabled={busy}
+              onClick={leaveAccount}
+            >
+              {loggingOut ? (
+                <LoaderCircle size={16} className="spin" />
+              ) : (
+                <LogOut size={16} />
+              )}
+              {loggingOut ? "Saindo…" : "Confirmar saída"}
+            </button>
+          </div>
+        </div>
+      )}
       <button
-        className="text-button danger-text account-logout"
+        ref={logoutButtonRef}
+        className="button danger account-logout"
         type="button"
-        onClick={onLogout}
-        disabled={busy}
+        onClick={() => {
+          setError("");
+          setLogoutConfirm(true);
+        }}
+        disabled={busy || logoutConfirm}
       >
         <LogOut size={16} /> Sair da minha conta
       </button>
@@ -1585,7 +1681,21 @@ function RequestModal({
     [error, setError] = useState(""),
     [fields, setFields] = useState({}),
     [action, setAction] = useState(""),
-    [reason, setReason] = useState("");
+    [reason, setReason] = useState(""),
+    [activity, setActivity] = useState("");
+  const actionBackRef = useRef(null),
+    actionTriggerRef = useRef(null);
+  useEffect(() => {
+    if (action) actionBackRef.current?.focus();
+    else actionTriggerRef.current?.focus();
+  }, [action]);
+  const confirmAction = (type, event) => {
+    if (busy) return;
+    actionTriggerRef.current = event.currentTarget;
+    setError("");
+    setFields({});
+    setAction(type);
+  };
   const isAdmin = user?.role === "admin",
     owned = !request || request.authorId === user?.id,
     editable =
@@ -1653,8 +1763,10 @@ function RequestModal({
       {fields[name] && <small className="field-error">{fields[name]}</small>}
     </label>
   );
-  const execute = async (fn) => {
+  const execute = async (fn, message) => {
+    if (busy) return;
     setBusy(true);
+    setActivity(message);
     setError("");
     setFields({});
     try {
@@ -1665,50 +1777,62 @@ function RequestModal({
       setFields(e.code === "EARLIER_REQUEST" ? {} : e.fields || {});
     } finally {
       setBusy(false);
+      setActivity("");
     }
   };
   const save = async (submit) =>
-    execute(async () => {
-      let r = await api(request ? `/requests/${request.id}` : "/requests", {
-        method: request ? "PUT" : "POST",
-        body: { ...data, ...(request ? { version: request.version } : {}) },
-      });
-      setRequest(r.request);
-      if (submit)
-        r = await api(`/requests/${r.request.id}/submit`, {
-          method: "POST",
-          body: { version: r.request.version },
+    execute(
+      async () => {
+        let r = await api(request ? `/requests/${request.id}` : "/requests", {
+          method: request ? "PUT" : "POST",
+          body: { ...data, ...(request ? { version: request.version } : {}) },
         });
-      notify(
-        submit
-          ? "Solicitação enviada para análise."
-          : "Solicitação salva com sucesso.",
-      );
-    });
+        setRequest(r.request);
+        if (submit)
+          r = await api(`/requests/${r.request.id}/submit`, {
+            method: "POST",
+            body: { version: r.request.version },
+          });
+        notify(
+          submit
+            ? "Solicitação enviada para análise."
+            : "Solicitação salva com sucesso.",
+        );
+      },
+      submit ? "Enviando solicitação para análise…" : "Salvando solicitação…",
+    );
   const act = async (type) =>
-    execute(async () => {
-      let path =
-        type === "approve" || type === "reject"
-          ? `/admin/requests/${request.id}/${type}`
-          : `/requests/${request.id}/${type}`;
-      if (type === "delete") path = `/requests/${request.id}`;
-      await api(path, {
-        method: type === "delete" ? "DELETE" : "POST",
-        body: {
-          version: request.version,
-          ...(type === "reject" ? { reason } : {}),
-        },
-      });
-      notify(
-        type === "approve"
-          ? "Evento aprovado e publicado na agenda."
-          : type === "reject"
-            ? "Solicitação rejeitada com justificativa."
-            : type === "delete"
-              ? "Rascunho excluído."
-              : "Evento cancelado.",
-      );
-    });
+    execute(
+      async () => {
+        let path =
+          type === "approve" || type === "reject"
+            ? `/admin/requests/${request.id}/${type}`
+            : `/requests/${request.id}/${type}`;
+        if (type === "delete") path = `/requests/${request.id}`;
+        await api(path, {
+          method: type === "delete" ? "DELETE" : "POST",
+          body: {
+            version: request.version,
+            ...(type === "reject" ? { reason } : {}),
+          },
+        });
+        notify(
+          type === "approve"
+            ? "Evento aprovado e publicado na agenda."
+            : type === "reject"
+              ? "Solicitação rejeitada com justificativa."
+              : type === "delete"
+                ? "Rascunho excluído."
+                : "Evento cancelado.",
+        );
+      },
+      {
+        approve: "Aprovando e publicando evento…",
+        reject: "Rejeitando solicitação…",
+        delete: "Excluindo rascunho…",
+        cancel: "Cancelando evento…",
+      }[type],
+    );
   return (
     <Modal
       wide
@@ -1762,12 +1886,13 @@ function RequestModal({
         )}
       <form
         noValidate
+        aria-busy={busy}
         onSubmit={(e) => {
           e.preventDefault();
-          save(true);
+          if (!busy && !action) save(true);
         }}
       >
-        <fieldset disabled={busy} className="request-form">
+        <fieldset disabled={busy || !!action} className="request-form">
           <div className="form-section-heading">
             <span>01</span>
             <div>
@@ -1958,6 +2083,11 @@ function RequestModal({
             reiniciam sua prioridade na fila.
           </p>
         </fieldset>
+        {busy && (
+          <p role="status" aria-live="polite" className="form-help">
+            <LoaderCircle size={17} className="spin" /> {activity}
+          </p>
+        )}
         {error && (
           <div className="inline-error" role="alert">
             {error}
@@ -1967,13 +2097,25 @@ function RequestModal({
           </div>
         )}
         {action && (
-          <div className="action-confirm">
-            <h3>
-              {action === "reject"
-                ? "Justifique a rejeição"
-                : action === "delete"
-                  ? "Excluir este rascunho?"
-                  : "Cancelar este evento?"}
+          <div
+            className="action-confirm"
+            role="group"
+            aria-labelledby="request-action-confirm-title"
+            aria-describedby={
+              action === "reject"
+                ? undefined
+                : "request-action-confirm-description"
+            }
+            aria-busy={busy}
+          >
+            <h3 id="request-action-confirm-title">
+              {action === "approve"
+                ? "Aprovar e publicar este evento?"
+                : action === "reject"
+                  ? "Justifique a rejeição"
+                  : action === "delete"
+                    ? "Excluir este rascunho?"
+                    : "Cancelar este evento?"}
             </h3>
             {action === "reject" ? (
               <label className="field">
@@ -1984,30 +2126,46 @@ function RequestModal({
                   minLength={3}
                   maxLength={2000}
                   rows={3}
+                  disabled={busy}
                 />
               </label>
             ) : (
-              <p>
-                {action === "delete"
-                  ? "O rascunho será excluído permanentemente."
-                  : "A solicitação será mantida no histórico e não aparecerá na agenda pública."}
+              <p id="request-action-confirm-description">
+                {action === "approve"
+                  ? "O evento ficará visível na agenda pública. A disponibilidade do local e a prioridade da fila serão verificadas antes da aprovação."
+                  : action === "delete"
+                    ? "O rascunho será excluído permanentemente."
+                    : "A solicitação será mantida no histórico e não aparecerá na agenda pública."}
               </p>
             )}
             <div className="form-actions">
               <button
+                ref={actionBackRef}
                 type="button"
                 className="button"
+                disabled={busy}
                 onClick={() => setAction("")}
               >
                 Voltar
               </button>
               <button
                 type="button"
-                className="button danger"
-                disabled={busy || (action === "reject" && !reason.trim())}
+                className={`button ${action === "approve" ? "primary" : "danger"}`}
+                disabled={
+                  busy || (action === "reject" && reason.trim().length < 3)
+                }
                 onClick={() => act(action)}
               >
-                {busy ? "Aguarde…" : "Confirmar"}
+                {busy && <LoaderCircle size={16} className="spin" />}
+                {busy
+                  ? "Aguarde…"
+                  : action === "approve"
+                    ? "Confirmar aprovação"
+                    : action === "reject"
+                      ? "Confirmar rejeição"
+                      : action === "delete"
+                        ? "Confirmar exclusão"
+                        : "Confirmar cancelamento"}
               </button>
             </div>
           </div>
@@ -2016,9 +2174,9 @@ function RequestModal({
           {owned && request?.status === "draft" && (
             <button
               type="button"
-              className="text-button danger-text"
-              disabled={busy}
-              onClick={() => setAction("delete")}
+              className="button danger"
+              disabled={busy || !!action}
+              onClick={(event) => confirmAction("delete", event)}
             >
               <Trash2 size={15} /> Excluir rascunho
             </button>
@@ -2027,9 +2185,9 @@ function RequestModal({
             (isAdmin && request?.status === "approved")) && (
             <button
               type="button"
-              className="text-button danger-text"
-              disabled={busy}
-              onClick={() => setAction("cancel")}
+              className="button danger"
+              disabled={busy || !!action}
+              onClick={(event) => confirmAction("cancel", event)}
             >
               <Ban size={15} /> Cancelar evento
             </button>
@@ -2039,22 +2197,22 @@ function RequestModal({
             <>
               <button
                 type="button"
-                className="button"
-                disabled={busy}
-                onClick={() => setAction("reject")}
+                className="button danger"
+                disabled={busy || !!action}
+                onClick={(event) => confirmAction("reject", event)}
               >
                 Rejeitar
               </button>
               <button
                 type="button"
                 className="button primary"
-                disabled={busy || unsavedChanges}
+                disabled={busy || !!action || unsavedChanges}
                 title={
                   unsavedChanges
                     ? "Salve as alterações antes de aprovar."
                     : undefined
                 }
-                onClick={() => act("approve")}
+                onClick={(event) => confirmAction("approve", event)}
               >
                 <Check size={16} /> Aprovar e publicar
               </button>
@@ -2064,6 +2222,7 @@ function RequestModal({
             <button
               type="button"
               className="button"
+              disabled={busy || !!action}
               onClick={() => setEditApproved(true)}
             >
               <Pencil size={16} /> Editar evento
@@ -2074,22 +2233,24 @@ function RequestModal({
               <button
                 type="button"
                 className="button"
-                disabled={busy}
+                disabled={busy || !!action}
                 onClick={() => save(false)}
               >
                 <Save size={16} />
-                {request && request.status !== "draft"
-                  ? "Salvar alterações"
-                  : "Salvar rascunho"}
+                {busy && activity === "Salvando solicitação…"
+                  ? "Salvando…"
+                  : request && request.status !== "draft"
+                    ? "Salvar alterações"
+                    : "Salvar rascunho"}
               </button>
               {(!request || ["draft", "rejected"].includes(request.status)) && (
                 <button
                   type="submit"
                   className="button primary"
-                  disabled={busy}
+                  disabled={busy || !!action}
                 >
                   <Send size={16} />
-                  {busy
+                  {busy && activity === "Enviando solicitação para análise…"
                     ? "Enviando…"
                     : request?.status === "rejected"
                       ? "Corrigir e reenviar"

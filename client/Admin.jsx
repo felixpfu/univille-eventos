@@ -518,7 +518,7 @@ function Catalog({ api, metadata, onMetadata, notify }) {
                   Editar
                 </button>
                 <button
-                  className="button small danger"
+                  className="button danger small"
                   onClick={() => {
                     setDeleting(row);
                     setError("");
@@ -526,6 +526,7 @@ function Catalog({ api, metadata, onMetadata, notify }) {
                   aria-label={`Excluir ${row.name}`}
                 >
                   <Trash2 size={15} />
+                  Excluir
                 </button>
               </div>
             </article>
@@ -689,6 +690,7 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(null);
+  const [confirmingAccessChange, setConfirmingAccessChange] = useState(false);
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
@@ -712,6 +714,7 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
   }, [api, refresh]);
   function openForm(row) {
     setEditing(row || null);
+    setConfirmingAccessChange(false);
     setError("");
     setForm({
       name: row?.name || "",
@@ -723,8 +726,22 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
       active: row ? Boolean(row.active) : true,
     });
   }
-  async function save(event) {
+  const deactivating = Boolean(editing?.active) && form?.active === false;
+  const roleRank = { visitor: 0, requester: 1, admin: 2 };
+  const reducingAccess =
+    Boolean(editing && form) && roleRank[form.role] < roleRank[editing.role];
+  function save(event) {
     event.preventDefault();
+    if (busy) return;
+    if (deactivating || reducingAccess) {
+      setError("");
+      setConfirmingAccessChange(true);
+      return;
+    }
+    persistUser();
+  }
+  async function persistUser() {
+    if (busy) return;
     setBusy(true);
     setError("");
     try {
@@ -741,9 +758,15 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
         body,
       });
       setForm(null);
+      setConfirmingAccessChange(false);
       setRefresh((value) => value + 1);
       if (editing?.id === user.id) await onAccountChanged?.();
-      notify("Usuário salvo com sucesso.", "success");
+      notify(
+        deactivating
+          ? "Usuário desativado. O acesso à conta foi encerrado."
+          : "Usuário salvo com sucesso.",
+        "success",
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -858,152 +881,226 @@ function UserManagement({ api, notify, user, onAccountChanged }) {
       )}
       {form && (
         <Modal
-          title={editing ? "Editar usuário" : "Adicionar usuário"}
+          key={confirmingAccessChange ? "confirm-access" : "user-form"}
+          title={
+            confirmingAccessChange
+              ? deactivating
+                ? "Desativar usuário"
+                : "Reduzir permissões do usuário"
+              : editing
+                ? "Editar usuário"
+                : "Adicionar usuário"
+          }
           onClose={() => setForm(null)}
           busy={busy}
         >
-          <form className="stack" onSubmit={save}>
-            <label className="field">
-              <span>
-                Nome completo <span aria-hidden="true">*</span>
-              </span>
-              <input
-                required
-                autoComplete="name"
-                maxLength={160}
-                value={form.name}
-                onChange={(event) =>
-                  setForm({ ...form, name: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>
-                E-mail <span aria-hidden="true">*</span>
-              </span>
-              <input
-                required
-                type="email"
-                autoComplete="off"
-                maxLength={254}
-                value={form.email}
-                onChange={(event) =>
-                  setForm({ ...form, email: event.target.value })
-                }
-              />
-            </label>
-            <label className="field">
-              <span>{editing ? "Nova senha" : "Senha *"}</span>
-              <input
-                required={!editing}
-                type="password"
-                minLength={12}
-                maxLength={128}
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(event) =>
-                  setForm({ ...form, password: event.target.value })
-                }
-              />
-              <small className="muted">
-                {editing ? "Deixe em branco para manter a senha atual. " : ""}
-                Use pelo menos 12 caracteres.
-              </small>
-            </label>
-            <label className="field">
-              <span>
-                Perfil <span aria-hidden="true">*</span>
-              </span>
-              <select
-                value={form.role}
-                onChange={(event) =>
-                  setForm({ ...form, role: event.target.value })
-                }
-              >
-                {Object.entries(ROLES).map(([value, label]) => (
-                  <option value={value} key={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {form.role === "requester" && (
-              <>
-                <label className="field">
-                  <span>Nome da empresa</span>
-                  <input
-                    required={
-                      !editing ||
-                      editing.role !== "requester" ||
-                      Boolean(editing.companyName || editing.cnpj)
-                    }
-                    autoComplete="organization"
-                    maxLength={200}
-                    value={form.companyName}
-                    onChange={(event) =>
-                      setForm({ ...form, companyName: event.target.value })
-                    }
-                  />
-                </label>
-                <label className="field">
-                  <span>CNPJ</span>
-                  <input
-                    required={
-                      !editing ||
-                      editing.role !== "requester" ||
-                      Boolean(editing.companyName || editing.cnpj)
-                    }
-                    type="text"
-                    autoCapitalize="characters"
-                    autoComplete="off"
-                    spellCheck={false}
-                    maxLength={18}
-                    value={form.cnpj}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        cnpj: event.target.value.toUpperCase(),
-                      })
-                    }
-                  />
-                  {editing && !editing.companyName && !editing.cnpj && (
-                    <small className="muted">
-                      Conta anterior ao cadastro de empresa. Para completar os
-                      dados, informe a empresa e o CNPJ juntos.
-                    </small>
-                  )}
-                </label>
-              </>
-            )}
-            <label className="checkbox-option">
-              <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(event) =>
-                  setForm({ ...form, active: event.target.checked })
-                }
-              />
-              Conta ativa
-            </label>
-            <p className="muted">
-              Contas inativas não conseguem entrar no sistema.
-            </p>
-            <ErrorMessage message={error} />
-            <div className="form-actions">
-              <button
-                type="button"
-                className="button"
-                disabled={busy}
-                onClick={() => setForm(null)}
-              >
-                Cancelar
-              </button>
-              <button className="button primary" disabled={busy}>
-                <Check size={16} />
-                {busy ? "Salvando…" : "Salvar usuário"}
-              </button>
+          {confirmingAccessChange ? (
+            <div className="stack">
+              <p>
+                Confirme as alterações de acesso de <strong>{form.name}</strong>{" "}
+                ({form.email}).
+              </p>
+              {deactivating && (
+                <p>
+                  A conta ficará inativa e as sessões abertas serão encerradas.
+                  O usuário não conseguirá entrar até que a administração
+                  reative o acesso.
+                </p>
+              )}
+              {reducingAccess && (
+                <p>
+                  O perfil mudará de <strong>{ROLES[editing.role]}</strong> para{" "}
+                  <strong>{ROLES[form.role]}</strong>. As permissões do perfil
+                  anterior serão removidas e será necessário entrar novamente.
+                </p>
+              )}
+              <p className="muted">
+                As solicitações e o histórico serão mantidos.
+              </p>
+              <ErrorMessage message={error} />
+              <div className="form-actions">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirmingAccessChange(false);
+                    setError("");
+                  }}
+                >
+                  Voltar para edição
+                </button>
+                <button
+                  className="button danger"
+                  type="button"
+                  disabled={busy}
+                  onClick={persistUser}
+                >
+                  {busy
+                    ? "Salvando…"
+                    : deactivating
+                      ? "Confirmar desativação"
+                      : "Confirmar redução de acesso"}
+                </button>
+              </div>
             </div>
-          </form>
+          ) : (
+            <form className="stack" onSubmit={save}>
+              <label className="field">
+                <span>
+                  Nome completo <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  required
+                  autoComplete="name"
+                  maxLength={160}
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm({ ...form, name: event.target.value })
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>
+                  E-mail <span aria-hidden="true">*</span>
+                </span>
+                <input
+                  required
+                  type="email"
+                  autoComplete="off"
+                  maxLength={254}
+                  value={form.email}
+                  onChange={(event) =>
+                    setForm({ ...form, email: event.target.value })
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>{editing ? "Nova senha" : "Senha *"}</span>
+                <input
+                  required={!editing}
+                  type="password"
+                  minLength={12}
+                  maxLength={128}
+                  autoComplete="new-password"
+                  value={form.password}
+                  onChange={(event) =>
+                    setForm({ ...form, password: event.target.value })
+                  }
+                />
+                <small className="muted">
+                  {editing ? "Deixe em branco para manter a senha atual. " : ""}
+                  Use pelo menos 12 caracteres.
+                </small>
+              </label>
+              <label className="field">
+                <span>
+                  Perfil <span aria-hidden="true">*</span>
+                </span>
+                <select
+                  value={form.role}
+                  onChange={(event) =>
+                    setForm({ ...form, role: event.target.value })
+                  }
+                >
+                  {Object.entries(ROLES).map(([value, label]) => (
+                    <option value={value} key={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {form.role === "requester" && (
+                <>
+                  <label className="field">
+                    <span>Nome da empresa</span>
+                    <input
+                      required={
+                        !editing ||
+                        editing.role !== "requester" ||
+                        Boolean(editing.companyName || editing.cnpj)
+                      }
+                      autoComplete="organization"
+                      maxLength={200}
+                      value={form.companyName}
+                      onChange={(event) =>
+                        setForm({ ...form, companyName: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>CNPJ</span>
+                    <input
+                      required={
+                        !editing ||
+                        editing.role !== "requester" ||
+                        Boolean(editing.companyName || editing.cnpj)
+                      }
+                      type="text"
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={18}
+                      value={form.cnpj}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          cnpj: event.target.value.toUpperCase(),
+                        })
+                      }
+                    />
+                    {editing && !editing.companyName && !editing.cnpj && (
+                      <small className="muted">
+                        Conta anterior ao cadastro de empresa. Para completar os
+                        dados, informe a empresa e o CNPJ juntos.
+                      </small>
+                    )}
+                  </label>
+                </>
+              )}
+              <label className="checkbox-option">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(event) =>
+                    setForm({ ...form, active: event.target.checked })
+                  }
+                />
+                Conta ativa
+              </label>
+              <p className="muted">
+                Contas inativas não conseguem entrar no sistema.
+              </p>
+              <ErrorMessage message={error} />
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="button"
+                  disabled={busy}
+                  onClick={() => setForm(null)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className={
+                    deactivating || reducingAccess
+                      ? "button danger"
+                      : "button primary"
+                  }
+                  disabled={busy}
+                >
+                  <Check size={16} />
+                  {busy
+                    ? "Salvando…"
+                    : deactivating
+                      ? "Revisar desativação"
+                      : reducingAccess
+                        ? "Revisar redução de acesso"
+                        : "Salvar usuário"}
+                </button>
+              </div>
+            </form>
+          )}
         </Modal>
       )}
     </section>
