@@ -485,13 +485,15 @@ export function reportCsv(events) {
   return (
     "\uFEFF" +
     [
-      columns.map(([, label]) => cell(label)).join(","),
+      // Excel with Brazilian regional settings expects the list separator ';'.
+      // Keep the header first: an Excel-only sep= line is an extra CSV record.
+      columns.map(([, label]) => cell(label)).join(";"),
       ...events.map((event) =>
         columns
           .map(([key]) =>
             cell(key === "status" ? labels[event.status] : event[key]),
           )
-          .join(","),
+          .join(";"),
       ),
     ].join("\r\n") +
     "\r\n"

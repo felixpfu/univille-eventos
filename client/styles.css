@@ -618,6 +618,12 @@ select {
   align-items: center;
   gap: 10px;
 }
+.view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 .section-heading .eyebrow {
   font-size: 12px;
   letter-spacing: 1.5px;

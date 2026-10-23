@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import PptxGenJS from "pptxgenjs";
+import JSZip from "jszip";
 
 const WIDTH = 13.333333;
 const HEIGHT = 7.5;
@@ -26,7 +27,7 @@ const MAX_LINES = Math.floor((BODY_HEIGHT - CELL_PADDING) / LINE_HEIGHT);
 function cleanText(value) {
   // OOXML cannot contain XML 1.0 control characters. Keep user content otherwise.
   return String(value ?? "")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, "")
     .trim();
 }
 
@@ -230,7 +231,7 @@ export async function generateAgendaPptx(
     );
     const header = COLUMNS.map((text) => ({
       text,
-      options: { bold: true, fontSize: 10, fill: "F4F4F4", valign: "mid" },
+      options: { bold: true, fontSize: 10, fill: "F4F4F4", valign: "middle" },
     }));
     slide.addTable([header, ...rows], {
       x: 0.5,
@@ -245,7 +246,9 @@ export async function generateAgendaPptx(
       border: { type: "solid", color: "444444", pt: 0.5 },
       margin: [3, 4, 3, 4],
       align: "center",
-      valign: "mid",
+      // PptxGenJS table cells map "middle" to the OOXML value "ctr";
+      // the text-box shorthand "mid" is emitted literally and is invalid here.
+      valign: "middle",
       autoPage: false,
       paraSpaceAfter: 0,
       lineSpacingMultiple: 1,
@@ -283,5 +286,31 @@ export async function generateAgendaPptx(
       });
     }
   });
-  return pptx.write({ outputType: "nodebuffer", compression: true });
+  // PptxGenJS 4.0.1 numbers tables independently of other shapes, producing
+  // duplicate cNvPr IDs (upstream issue #1532). PowerPoint requires one unique
+  // drawing ID per slide. These agendas contain no animations or connectors
+  // referencing shape IDs, so a sequential numbering preserves all content and
+  // relationships while keeping the native tables editable.
+  const archive = await JSZip.loadAsync(
+    await pptx.write({ outputType: "nodebuffer", compression: false }),
+  );
+  // CT_Presentation requires notesMasterIdLst before sldIdLst. The library
+  // emits those lists in reverse order; keep their relationship IDs intact.
+  const presentation = archive.file("ppt/presentation.xml");
+  archive.file(
+    presentation.name,
+    (await presentation.async("string")).replace(
+      /(<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>)\s*(<p:notesMasterIdLst>[\s\S]*?<\/p:notesMasterIdLst>)/,
+      "$2$1",
+    ),
+  );
+  for (const part of archive.file(/^ppt\/slides\/slide\d+\.xml$/)) {
+    let drawingId = 0;
+    const xml = (await part.async("string")).replace(
+      /(<p:cNvPr\b[^>]*\bid=")\d+("[^>]*>)/g,
+      (_, before, after) => `${before}${++drawingId}${after}`,
+    );
+    archive.file(part.name, xml);
+  }
+  return archive.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
 }

@@ -16,6 +16,8 @@ A revisão funcional da v1.3.1 registrou **30 testes aprovados**: 18 de backend,
 
 Na v1.4.1, a suíte inclui também cinco testes do operador de conteúdo para apresentação, totalizando **35 testes**. Eles usam HTTP e SQLite temporários para conferir preservação dos oito eventos e de um evento de solicitante com cadastros compartilhados; ausência de alterações em repetição; recusa de edições manuais e colisões antes da primeira escrita; prévia sem rede; e retomada de atualização interrompida.
 
+Na v1.5.0, a suíte passa a **43 testes**. Duas regressões CSV usam `csv-parse` para conferir os quinze campos, BOM, acentos, delimitador brasileiro, conteúdo entre aspas, fórmulas e filtros. Duas regressões PPTX conferem regras OOXML e o download binário por HTTP. Três testes PDF usam o parser real Mozilla PDF.js para ler conteúdo, dimensões, imagem, fontes, paginação e campos extensos. A integração HTTP do PDF verifica acesso anônimo e por três perfis, datas inválidas, combinação de filtros, exclusão de pendentes e resultado vazio.
+
 | Grupo                     | Evidências                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Autenticação e permissões | Hash de senha, sessões, origem/CSRF, cookies de produção, propriedade de pedidos, desativação e expiração.                                                        |
@@ -33,7 +35,11 @@ Na v1.4.1, a suíte inclui também cinco testes do operador de conteúdo para ap
 
 As integrações do backend utilizam servidor HTTP e SQLite reais. Somente o transporte SMTP é simulado: **nenhum teste envia e-mail**. Os testes de PPTX inspecionam o arquivo produzido. O CI instala pelo lockfile, testa e compila com Node 24; não publica e não contém credenciais de produção.
 
+A revisão externa do PPTX utilizou os esquemas oficiais ECMA-376 Parte 4: os 30 componentes PresentationML/DrawingML de duas apresentações corrigidas passaram, além da checagem de IDs de desenho únicos por slide. Houve abertura e renderização no LibreOffice. Os PDFs normal, vazio e anual foram renderizados com Poppler, inspecionados visualmente e lidos com pypdf; campos extensos foram preservados até seus marcadores finais. Esses programas são ferramentas de QA, sem dependência no servidor. Não havia Microsoft PowerPoint ou Excel nativos disponíveis; a abertura nesses aplicativos do usuário não foi confirmada nesta revisão. Detalhes em [PPTX.md](PPTX.md), [CSV.md](CSV.md) e [PDF.md](PDF.md).
+
 ## Interface e documentos
+
+Na v1.5.0, a revisão local conferiu os três botões de exportação lado a lado no computador e empilhados em tela de 390 × 844, sem rolagem horizontal da página. O período anual foi aplicado pela interface e os links passaram a usar suas datas; o botão PDF foi acionado. O teste HTTP lê o documento baixado com parser real, incluindo a mesma combinação de filtros aplicada pela interface.
 
 A revisão no navegador usou janelas de **1440 × 1000** e **390 × 844**, sem rolagem horizontal da página. Foram conferidos calendário inicial, navegação em lista, aplicação de período anual de 1º de janeiro a 31 de dezembro, download semanal de PowerPoint pela interface e salvamento do consentimento com o aviso explícito de SMTP indisponível. As telas utilizam São Bento do Sul, a marca institucional original e tema claro padrão.
 
@@ -66,7 +72,7 @@ Use dados fictícios e sessões separadas de visitante, solicitante e administra
 5. Envie dois pendentes conflitantes. Tente aprovar o segundo primeiro e confira a recusa indicando o protocolo anterior. Rejeite o primeiro, confira o motivo para o autor e teste reenvio com nova posição.
 6. Corrija apenas o título de um pendente e confira a posição preservada. Mude local/data/horário e confira a nova posição. Após aprovação, confirme a agenda e os bloqueios de sobreposição.
 7. Edite/cancele um aprovado como administrador; cancele um pendente próprio e exclua um rascunho próprio. Confira as confirmações de cancelamento e exclusão, a opção de voltar sem executar e a preservação dos registros enviados.
-8. Nos relatórios, escolha semana, ano e período personalizado; combine setor, tema e estado. Compare tabela/CSV. Abra o PowerPoint e confira as oito colunas, só aprovados, identidade visual e várias páginas quando necessário.
+8. Nos relatórios, escolha semana, ano e período personalizado; combine setor, tema e estado. Compare tabela/CSV e confira as quinze colunas no Excel pt-BR. Abra PowerPoint e PDF e confira as oito colunas, só aprovados, identidade visual e várias páginas quando necessário. CSV segue o estado escolhido; PPTX e PDF usam apenas aprovados.
 9. Na conta, salve/desative notificações. Sem SMTP, confira o aviso de indisponibilidade e que não há alegação de envio. A confirmação por link e entrega real devem ser aceitas separadamente, após configurar um provedor e autorizar uma conta de teste.
 10. Troque a senha e confirme a revogação de sessões antigas. Confira as confirmações antes de sair da conta, desativar outra conta ou reduzir seu acesso; use **Voltar** antes de repetir e confirmar. Confira perda de acesso após a desativação e preserve o último administrador ativo.
 11. Repita navegação, filtros, formulário e diálogos em computador e celular. Confira foco de teclado, rolagem, rótulos e mensagens de erro.

@@ -11,7 +11,7 @@ Sistema acadêmico de solicitação, aprovação e consulta de eventos para a **
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Visitante     | Agenda dos aprovados do mês atual e dos dois seguintes, sem login. Cadastro opcional para preferências de e-mail.                |
 | Solicitante   | Login por e-mail e senha; rascunhos, envio, acompanhamento, edição, correção de rejeitados e cancelamento de pendentes próprios. |
-| Administrador | Aprovação/rejeição com prioridade por envio, edição/cancelamento de aprovados, usuários, cadastros e relatórios CSV/PowerPoint.  |
+| Administrador | Aprovação/rejeição com prioridade por envio, edição/cancelamento de aprovados, usuários, cadastros e relatórios CSV/PowerPoint/PDF. |
 
 O cadastro começa pela escolha do perfil: visitante informa e-mail e senha; solicitante informa também nome completo, empresa e CNPJ. A empresa e o CNPJ ficam restritos à conta e à administração.
 
@@ -29,7 +29,7 @@ As solicitações registram **Realização** como entidade organizadora própria
 
 Pedidos pendentes podem compartilhar horário, mas a aprovação respeita o **primeiro envio** entre os conflitantes. A fila utiliza horário de envio e sequência persistente para desempatar envios no mesmo instante. Reenvio após rejeição ou mudança de data, horário ou ambiente em pedido pendente gera nova posição; correções sem mudar a reserva preservam a posição. A transação de aprovação também impede dois eventos aprovados sobrepostos.
 
-Os relatórios têm atalhos semanal, anual e personalizado, além de filtros combináveis. **CSV** exporta os estados administrativos selecionados; **PowerPoint** contém exclusivamente aprovados, em uma tabela editável com oito colunas, cabeçalho institucional, logo e continuação automática. Veja [PPTX.md](docs/PPTX.md).
+Os relatórios têm atalhos semanal, anual e personalizado, além de filtros combináveis. **Excel / CSV** exporta os estados administrativos selecionados, com quinze colunas, separador `;` e BOM UTF-8 para Excel pt-BR. **PowerPoint** contém exclusivamente aprovados, em uma tabela editável com oito colunas, cabeçalho institucional, logo e continuação automática. **PDF** usa os mesmos aprovados e filtros, em A4 paisagem com texto selecionável, fontes incorporadas e paginação. Veja [CSV.md](docs/CSV.md), [PPTX.md](docs/PPTX.md) e [PDF.md](docs/PDF.md).
 
 Notificações foram implementadas com consentimento, confirmação da propriedade do e-mail, preferências de publicações/lembretes e processamento em segundo plano. **O provedor SMTP ainda não foi configurado, por decisão do responsável.** A interface informa a indisponibilidade, as preferências podem ser salvas e nenhum envio real foi validado. Sem SMTP o timer permanece desativado. Veja [EMAIL.md](docs/EMAIL.md).
 
@@ -77,8 +77,9 @@ Os dados ficam em `DATA_DIR/events.sqlite`, por padrão `./data`. Reiniciar ou r
 | Diretório                          | Responsabilidade                                                 |
 | ---------------------------------- | ---------------------------------------------------------------- |
 | `client/`                          | Interface pública, solicitante e administração                   |
-| `server/`                          | API, regras, migração, geração de PPTX e fila de e-mail          |
+| `server/`                          | API, regras, migração, geração de PPTX/PDF e fila de e-mail      |
 | `public/branding/`                 | Marca institucional e registro da fonte                          |
+| `public/fonts/`                    | Fontes Noto Sans e licença para incorporação no PDF              |
 | `scripts/admin.js`                 | Provisionamento administrativo pela CLI                          |
 | `scripts/process-notifications.js` | Processamento opcional da fila SMTP                              |
 | `tests/`                           | Integração HTTP/SQLite, notificações simuladas e validação OOXML |
@@ -92,7 +93,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão de 23/10/2026 possui **35 testes automatizados**: 18 de backend, sete de notificações, três de PowerPoint, dois de regressão das listagens e cinco da atualização de conteúdo para apresentação. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
+A revisão de 23/10/2026 possui **43 testes automatizados**: 20 de backend, sete de notificações, cinco de PowerPoint, três de PDF, um de download PDF por HTTP, dois de regressão das listagens e cinco da atualização de conteúdo para apresentação. A auditoria de dependências é uma verificação separada e deve ser repetida a cada publicação. O [CI](.github/workflows/ci.yml) instala pelo lockfile, testa e compila em pushes e pull requests; ele não contém credenciais e não faz deploy.
 
 O roteiro específico para a separação entre calendário/lista e as confirmações de ações está em [VALIDACAO.md](docs/VALIDACAO.md#aceite-da-alteração-de-calendário-e-confirmações). Os resultados efetivamente conferidos em cada versão estão registrados nesse documento.
 
@@ -106,7 +107,7 @@ O login utiliza e-mail e senha; não há login institucional, link mágico ou re
 
 Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. Não há cadastro de participantes, pagamentos ou emissão de certificados. Use dados fictícios na demonstração. Anexos privados, credenciais, banco operacional, filas e tokens não integram o repositório público.
 
-**Transparência:** ChatGPT/Codex participou da interpretação, implementação, documentação e verificação. A interface usa React e Lucide, o servidor usa Express e Helmet, o PowerPoint usa PptxGenJS, o envio preparado usa Nodemailer e o frontend é compilado pelo Vite. As dependências resolvidas constam em `package-lock.json`. Não foram utilizadas plataformas Lovable ou Bolt. A marca pertence à Univille e seus direitos não são transferidos pela licença do código.
+**Transparência:** ChatGPT/Codex participou da interpretação, implementação, documentação e verificação. A interface usa React e Lucide, o servidor usa Express e Helmet, o PowerPoint usa PptxGenJS com normalização OOXML via JSZip, o PDF usa PDFKit, o envio preparado usa Nodemailer e o frontend é compilado pelo Vite. As dependências resolvidas constam em `package-lock.json`. Não foram utilizadas plataformas Lovable ou Bolt. A marca pertence à Univille e seus direitos não são transferidos pela licença do código.
 
 ## Exemplos de eventos
 

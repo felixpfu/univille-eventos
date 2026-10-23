@@ -10,9 +10,39 @@ import { once } from "node:events";
 import { createApp } from "../server/app.js";
 import { createAdministrator } from "../scripts/admin.js";
 import { verifyPassword, hashPassword } from "../server/security.js";
-import { cnpjField } from "../server/domain.js";
+import { cnpjField, reportCsv } from "../server/domain.js";
+import { parse } from "csv-parse/sync";
 const PASSWORD = "Teste ficticio seguro 2026!";
 const fixedNow = () => new Date("2026-10-23T15:00:00Z");
+
+// Exercise the wire format with an independent CSV implementation, rather than
+// splitting on line breaks/delimiters that may legally occur inside a cell.
+function parseReportCsv(source) {
+  return parse(source, {
+    bom: true,
+    delimiter: ";",
+    record_delimiter: "\r\n",
+    relax_column_count: false,
+  });
+}
+
+const CSV_COLUMNS = [
+  "Evento",
+  "Data",
+  "Início",
+  "Fim",
+  "Tema",
+  "Setor/curso",
+  "Centro de custo",
+  "Local",
+  "Solicitante",
+  "Público alvo",
+  "Curso do público",
+  "Semestre do público",
+  "Palestrante/Ministrante",
+  "Realização",
+  "Status",
+];
 
 async function fixture(options = {}) {
   const directory = mkdtempSync(join(tmpdir(), "univille-test-"));
@@ -588,7 +618,16 @@ test("Catalog references and reports preserve exact filters, columns and CSV saf
         await draft(
           f,
           user.cookie,
-          eventData(c, { name: '=HYPERLINK("ficticio")' }),
+          eventData(c, {
+            name: '=HYPERLINK("ficticio")',
+            requesterName: 'Ana; "Solicitante"\r\nCoordenação',
+            audience:
+              'Estudantes de "Engenharia"; 1º, 3º e 5º\nComunidade acadêmica',
+            audienceCourseId: c.course.id,
+            audienceSemester: "1º, 3º e 5º",
+            speaker: 'Profª "Ana"; João, Luís',
+            organizer: "Coordenação de Ciência, Tecnologia; Extensão",
+          }),
         ),
       ),
     );
@@ -612,7 +651,27 @@ test("Catalog references and reports preserve exact filters, columns and CSV saf
     assert.equal(csv.status, 200);
     assert.match(csv.data, /Centro de custo/);
     assert.match(csv.data, /"'=HYPERLINK/);
-    assert.equal(csv.data.trim().split("\r\n").length, 2);
+    const rows = parseReportCsv(csv.data);
+    assert.deepEqual(rows[0], CSV_COLUMNS);
+    assert.equal(rows.length, 2);
+    assert.ok(rows.every((row) => row.length === CSV_COLUMNS.length));
+    assert.deepEqual(rows[1], [
+      `'=HYPERLINK("ficticio")`,
+      "2026-10-24",
+      "19:00",
+      "20:00",
+      c.theme.name,
+      c.course.name,
+      c.cost.name,
+      c.room.name,
+      'Ana; "Solicitante"\r\nCoordenação',
+      'Estudantes de "Engenharia"; 1º, 3º e 5º\nComunidade acadêmica',
+      c.course.name,
+      "1º, 3º e 5º",
+      'Profª "Ana"; João, Luís',
+      "Coordenação de Ciência, Tecnologia; Extensão",
+      "Aprovado",
+    ]);
     assert.match(csv.headers.get("content-disposition"), /attachment/);
     assert.equal(
       (
@@ -676,6 +735,176 @@ test("Catalog references and reports preserve exact filters, columns and CSV saf
         .costCenterName,
       c.cost.name,
     );
+  } finally {
+    await f.close();
+  }
+});
+
+test("Excel pt-BR CSV uses UTF-8 BOM, semicolons, CRLF and neutralizes formulas without losing quoted/multiline cells", () => {
+  const source = reportCsv([
+    {
+      name: '=HYPERLINK("https://example.test";"AÇÃO")',
+      date: "2026-10-24",
+      startTime: "08:30",
+      endTime: "10:00",
+      themeName: "+SOMA(1;2)",
+      courseName: "-1+2",
+      costCenterName: "@SOMA(A1:A2)",
+      roomName: "\t=1+1",
+      requesterName: "\r=1+1",
+      audience: "   =1+1",
+      audienceCourseName: 'Curso; "Saúde", Ação',
+      audienceSemester: "1º\r\n3º",
+      speaker: 'Palestrante; "João"',
+      organizer: "Realização, integração",
+      status: "approved",
+    },
+  ]);
+  const bytes = Buffer.from(source, "utf8");
+  assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+  assert.ok(source.startsWith('\uFEFF"Evento";"Data";"Início";'));
+  assert.ok(source.includes('"Status"\r\n'));
+  assert.ok(source.endsWith(';"Aprovado"\r\n'));
+  assert.ok(!source.startsWith("\uFEFFsep="));
+  const rows = parseReportCsv(bytes);
+  assert.deepEqual(rows[0], CSV_COLUMNS);
+  assert.equal(rows.length, 2);
+  assert.ok(rows.every((row) => row.length === CSV_COLUMNS.length));
+  assert.deepEqual(rows[1], [
+    `'=HYPERLINK("https://example.test";"AÇÃO")`,
+    "2026-10-24",
+    "08:30",
+    "10:00",
+    "'+SOMA(1;2)",
+    "'-1+2",
+    "'@SOMA(A1:A2)",
+    "'\t=1+1",
+    "'\r=1+1",
+    "'   =1+1",
+    'Curso; "Saúde", Ação',
+    "1º\r\n3º",
+    'Palestrante; "João"',
+    "Realização, integração",
+    "Aprovado",
+  ]);
+  const empty = reportCsv([]);
+  assert.deepEqual(parseReportCsv(empty), [CSV_COLUMNS]);
+  assert.equal(empty.split("\r\n").length, 2);
+});
+
+test("CSV download preserves combined date/course/theme/status filters and an empty result remains a fifteen-column table", async () => {
+  const f = await fixture();
+  try {
+    const c = await catalog(f);
+    const user = await register(f);
+    const alternateTheme = await f.request("/admin/catalog/themes", {
+      method: "POST",
+      cookie: f.admin,
+      body: { name: "Extensão; saúde e ação" },
+    });
+    const alternateCourse = await f.request("/admin/catalog/courses", {
+      method: "POST",
+      cookie: f.admin,
+      body: { name: "Outro curso", costCenterId: c.cost.id },
+    });
+    assert.equal(alternateTheme.status, 201);
+    assert.equal(alternateCourse.status, 201);
+    const cases = [
+      {
+        name: 'Pesquisa; "integração", ação',
+        startTime: "08:00",
+        endTime: "09:00",
+        status: "approved",
+      },
+      {
+        name: "Solicitação pendente",
+        startTime: "10:00",
+        endTime: "11:00",
+        status: "pending",
+      },
+      {
+        name: "Evento de outro curso",
+        startTime: "12:00",
+        endTime: "13:00",
+        status: "approved",
+        courseId: alternateCourse.data.item.id,
+      },
+      {
+        name: "Evento de outro tema",
+        startTime: "14:00",
+        endTime: "15:00",
+        status: "approved",
+        themeId: alternateTheme.data.item.id,
+      },
+      {
+        name: "Evento fora do período",
+        date: "2026-10-25",
+        startTime: "16:00",
+        endTime: "17:00",
+        status: "approved",
+      },
+      {
+        name: "Rascunho privado",
+        startTime: "18:00",
+        endTime: "19:00",
+        status: "draft",
+      },
+    ];
+    for (const { status, ...changes } of cases) {
+      let event = await draft(f, user.cookie, eventData(c, changes));
+      if (status !== "draft") event = await submit(f, user.cookie, event);
+      if (status === "approved") await approve(f, event);
+    }
+    const query = `from=2026-10-24&to=2026-10-24&courseId=${c.course.id}&themeId=${c.theme.id}`;
+    for (const [suffix, names] of [
+      ["&status=approved", [cases[0].name]],
+      ["&status=pending", [cases[1].name]],
+      ["&status=all", [cases[0].name, cases[1].name]],
+      ["", [cases[0].name, cases[1].name]],
+    ]) {
+      const response = await fetch(
+        `${f.origin}/api/admin/reports.csv?${query}${suffix}`,
+        {
+          headers: { Cookie: f.admin },
+        },
+      );
+      assert.equal(response.status, 200);
+      assert.match(
+        response.headers.get("content-type"),
+        /text\/csv;\s*charset=utf-8/i,
+      );
+      assert.match(
+        response.headers.get("content-disposition"),
+        /attachment;.*\.csv/,
+      );
+      const bytes = Buffer.from(await response.arrayBuffer());
+      assert.deepEqual([...bytes.subarray(0, 3)], [0xef, 0xbb, 0xbf]);
+      const rows = parseReportCsv(bytes);
+      assert.deepEqual(rows[0], CSV_COLUMNS);
+      assert.ok(rows.every((row) => row.length === CSV_COLUMNS.length));
+      assert.deepEqual(
+        rows.slice(1).map((row) => row[0]),
+        names,
+      );
+      const report = await f.request(`/admin/reports?${query}${suffix}`, {
+        cookie: f.admin,
+      });
+      assert.deepEqual(
+        rows.slice(1).map((row) => row[0]),
+        report.data.events.map((event) => event.name),
+      );
+    }
+    const empty = await f.request(
+      "/admin/reports.csv?from=2026-10-31&to=2026-10-31&status=approved",
+      { cookie: f.admin },
+    );
+    assert.equal(empty.status, 200);
+    assert.deepEqual(parseReportCsv(empty.data), [CSV_COLUMNS]);
+    const all = parseReportCsv(
+      (await f.request("/admin/reports.csv", { cookie: f.admin })).data,
+    );
+    assert.equal(all.length, cases.length);
+    assert.ok(!all.some((row) => row[0] === "Rascunho privado"));
   } finally {
     await f.close();
   }

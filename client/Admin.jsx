@@ -1212,6 +1212,13 @@ function Reports({ api, metadata }) {
             >
               <ArrowDownToLine size={17} /> PowerPoint · aprovados
             </a>
+            <a
+              className="button"
+              href={`${import.meta.env.BASE_URL}api/admin/agenda.pdf?${pptxQuery}`}
+              download
+            >
+              <ArrowDownToLine size={17} /> PDF · aprovados
+            </a>
           </div>
         )}
       </div>
@@ -1365,9 +1372,9 @@ function Reports({ api, metadata }) {
         </div>
       </form>
       <p className="muted table-caption">
-        Período aplicado: {dateLabel(applied.from)} a {dateLabel(applied.to)}. O
-        PowerPoint inclui somente eventos aprovados nos filtros de período,
-        setor e tema. O CSV acompanha o status selecionado.
+        Período aplicado: {dateLabel(applied.from)} a {dateLabel(applied.to)}.
+        PowerPoint e PDF incluem somente eventos aprovados nos filtros de
+        período, setor e tema. O CSV acompanha o status selecionado.
       </p>
       <ErrorMessage message={error} />
       {loading ? (

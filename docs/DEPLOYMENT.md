@@ -43,6 +43,8 @@ Antes de empacotar, revise o diff, execute a auditoria de produção, faça comm
 
 Esse comando instala dependências pelo lockfile, executa os testes e compila o React com base `/`. O tarball inclui uma lista explícita de diretórios e exclui `.env`, banco e `node_modules`. Não copie um banco de desenvolvimento para produção.
 
+O build copia a logo e as fontes Noto Sans licenciadas para `dist/branding/` e `dist/fonts/`. O pacote precisa conter esses arquivos para gerar PDF e PowerPoint; o gerador tenta `public/` no desenvolvimento e `dist/` nas releases. Não é necessário instalar Office, LibreOffice ou Poppler no servidor. A v1.5.0 não altera o esquema nem os registros do banco.
+
 Envie o tarball e os scripts de implantação a um diretório temporário no servidor. Um exemplo, a partir da raiz do repositório:
 
 ```bash

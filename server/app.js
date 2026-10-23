@@ -5,6 +5,7 @@ import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
 import { openDatabase, transaction } from "./db.js";
 import { generateAgendaPptx } from "./presentation.js";
+import { generateAgendaPdf } from "./pdf.js";
 import {
   initNotificationSchema,
   registerNotificationRoutes,
@@ -582,6 +583,27 @@ export function createApp(options = {}) {
       )
       .attachment(`agenda-univille-${req.query.from}-${req.query.to}.pptx`)
       .send(presentation);
+  });
+  api.get("/admin/agenda.pdf", admin, async (req, res) => {
+    if (!req.query.from || !req.query.to)
+      fail(
+        400,
+        "Selecione as datas inicial e final da agenda.",
+        "VALIDATION_ERROR",
+      );
+    const period = req.query.period || "week";
+    if (!["week", "year", "custom"].includes(period))
+      fail(400, "Tipo de período inválido.", "VALIDATION_ERROR");
+    const events = filteredReports(db, { ...req.query, status: "approved" });
+    const document = await generateAgendaPdf(events, {
+      from: req.query.from,
+      to: req.query.to,
+      period,
+    });
+    res
+      .type("application/pdf")
+      .attachment(`agenda-univille-${req.query.from}-${req.query.to}.pdf`)
+      .send(document);
   });
   installCatalogRoutes(api, db, admin, now);
   installUserRoutes(api, db, admin, now, recheckAdmin);
