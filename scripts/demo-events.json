@@ -5,7 +5,7 @@
     "date": "2026-10-26",
     "startTime": "08:00",
     "endTime": "10:00",
-    "room": "Laboratório",
+    "room": "Miniauditório",
     "course": "Engenharia de Software",
     "semesters": "1º, 3º e 5º semestres",
     "description": "Evento fictício de demonstração para estudantes de Engenharia de Software do 1º, 3º e 5º semestres. A oficina apresenta um desafio de criação de protótipos de aplicativos, com pesquisa de necessidades, desenho de telas e apresentação das soluções."
@@ -16,7 +16,7 @@
     "date": "2026-10-27",
     "startTime": "14:00",
     "endTime": "16:00",
-    "room": "Sala multiuso",
+    "room": "Auditório",
     "course": "Administração",
     "semesters": "2º e 4º semestres",
     "description": "Evento fictício de demonstração para estudantes de Administração do 2º e 4º semestres. Os grupos simulam a criação de um pequeno negócio, definindo proposta de valor, público e um plano inicial de operação."
@@ -38,7 +38,7 @@
     "date": "2026-10-29",
     "startTime": "09:00",
     "endTime": "11:00",
-    "room": "Sala multiuso",
+    "room": "Miniauditório",
     "course": "Psicologia",
     "semesters": "3º e 5º semestres",
     "description": "Evento fictício de demonstração para estudantes de Psicologia do 3º e 5º semestres. A atividade propõe exercícios educativos de comunicação e escuta em situações simuladas, seguidos de discussão em grupo, sem atendimento clínico."
@@ -49,7 +49,7 @@
     "date": "2026-10-30",
     "startTime": "15:00",
     "endTime": "17:00",
-    "room": "Laboratório",
+    "room": "Miniauditório",
     "course": "Ciências Contábeis",
     "semesters": "2º e 6º semestres",
     "description": "Evento fictício de demonstração para estudantes de Ciências Contábeis do 2º e 6º semestres. A oficina usa receitas e despesas inventadas para construir um orçamento, identificar custos e apresentar indicadores em uma planilha."
@@ -71,7 +71,7 @@
     "date": "2026-11-10",
     "startTime": "10:00",
     "endTime": "12:00",
-    "room": "Laboratório",
+    "room": "Miniauditório",
     "course": "Engenharia de Software",
     "semesters": "5º e 7º semestres",
     "description": "Evento fictício de demonstração para estudantes de Engenharia de Software do 5º e 7º semestres. O encontro apresenta exemplos de testes automatizados, revisão de código e acessibilidade em um projeto de aplicativo inteiramente simulado."

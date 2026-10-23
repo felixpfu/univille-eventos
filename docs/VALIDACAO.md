@@ -12,7 +12,7 @@ npm run build
 npm audit --omit=dev
 ```
 
-A revisão funcional da v1.3.0 registrou **30 testes aprovados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
+A revisão funcional da v1.3.1 registrou **30 testes aprovados**: 18 de backend, sete de notificações, três de PowerPoint e dois de regressão das listagens. A auditoria de produção, repetida após fixar `image-size` em `2.0.4` via override, informou **zero vulnerabilidades conhecidas** nessa execução. Essa conclusão se refere às dependências e à base de avisos consultada; deve ser reavaliada a cada atualização.
 
 | Grupo                     | Evidências                                                                                                                                                        |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -37,6 +37,8 @@ A revisão no navegador usou janelas de **1440 × 1000** e **390 × 844**, sem r
 Na v1.2.0, foram conferidos os dois fluxos de cadastro, a recusa de CNPJ inválido e sua correção sem duplicar a conta, e a consulta administrativa de empresa/CNPJ. A revisão visual usou 1440 × 1000, 390 × 844 e 320 × 844. Na comparação entre claro/escuro, 52 elementos do cabeçalho/calendário em desktop mantiveram as mesmas medidas e posições; o cabeçalho e os elementos comparados em celular e administração também permaneceram alinhados. Não houve rolagem horizontal da página nos cenários conferidos. A tipografia usa corpo e campos de 16 px ou mais, controles de 14–16 px e auxiliares de no mínimo 12 px.
 
 Na v1.3.0, foram conferidos os oito eventos fictícios com manhã/tarde/noite e suas descrições, cursos e vários semestres. A carga via API aprovou oito pedidos; uma segunda execução ignorou os oito sem criar duplicações. A revisão em desktop e celular conferiu lista, calendário e diálogo de detalhes com descrição e participantes. O teste de backend verifica que apenas aprovados são públicos e que objetivo, justificativa, observações e dados de conta não vazam. A migração v4 preserva registros sem preencher descrições a partir de textos internos.
+
+Na v1.3.1, os oito exemplos anteriores foram atualizados via API para Auditório e Miniauditório, mantendo os mesmos IDs, conteúdo, cursos, semestres e horários. Foram criados dois locais sem presumir recursos ou capacidade; os catálogos antigos permaneceram intactos. A segunda execução do atualizador e a repetição do seed ignoraram os oito registros, sem novas versões ou duplicações. O filtro público e o cadastro priorizam as duas opções sob o rótulo “Local do evento”. A ordem das opções foi conferida no navegador.
 
 O roteiro deve ser repetido após mudanças visuais ou de fluxo. Essas verificações pontuais não constituem uma suíte permanente de navegador nem uma avaliação completa em todos os dispositivos.
 

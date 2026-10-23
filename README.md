@@ -105,3 +105,5 @@ Inscrições e declarações são indicadores Sim/Não para o setor de Eventos. 
 ## Exemplos de eventos
 
 A carga opcional e explícita de oito eventos fictícios, com horários, descrições, cursos e semestres variados, está documentada em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md). O script usa a API autenticada, valida a ordem de envio/aprovação e não substitui registros existentes. Os exemplos são identificados como demonstração; migrações e inicialização não executam essa carga.
+
+Os locais **Auditório** e **Miniauditório**, informados pelo responsável, aparecem primeiro nas opções de **Local do evento**. Os exemplos usam esses locais sem presumir equipamentos ou capacidade; o procedimento para atualizar exemplos já publicados está em [DEMONSTRACAO.md](docs/DEMONSTRACAO.md).

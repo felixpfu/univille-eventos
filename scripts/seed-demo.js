@@ -4,6 +4,9 @@ import { pathToFileURL } from "node:url";
 export const DEMO_MARKER = "DEMO_UNIVILLE_2026_V1";
 const SUFFIX = " · Demonstração";
 const CATALOG_DESCRIPTION = `${DEMO_MARKER}: cadastro fictício para demonstração do sistema; não confirma instalações nem a oferta do curso no campus.`;
+export const VENUE_DESCRIPTION =
+  "Espaço informado pelo responsável para o agendamento de eventos no campus São Bento do Sul.";
+export const DEMO_VENUES = new Set(["Auditório", "Miniauditório"]);
 const planUrl = new URL("./demo-events.json", import.meta.url);
 
 export async function demoPlan() {
@@ -19,6 +22,7 @@ export async function demoPlan() {
       !/^\d{2}:\d{2}$/.test(item.startTime) ||
       !/^\d{2}:\d{2}$/.test(item.endTime) ||
       item.startTime >= item.endTime ||
+      !DEMO_VENUES.has(item.room) ||
       !item.description?.startsWith("Evento fictício de demonstração") ||
       item.description.length > 2000 ||
       !item.description.includes(item.course) ||
@@ -43,7 +47,7 @@ export async function demoPlan() {
   return plan;
 }
 
-function checkedOrigin(value) {
+export function checkedOrigin(value) {
   const url = new URL(value);
   const local = ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname);
   if (
@@ -64,6 +68,34 @@ function checkedOrigin(value) {
 const noteFor = (item) =>
   `[${DEMO_MARKER}:${item.key}] Evento fictício para demonstração pública autorizada. Não representa programação oficial.`;
 const nameFor = (item) => `${item.name}${SUFFIX}`;
+
+export function demoEventData(item, { themeId, roomId, courseId }) {
+  return {
+    name: nameFor(item),
+    themeId,
+    date: item.date,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    roomId,
+    courseId,
+    audienceCourseId: courseId,
+    audienceSemester: item.semesters,
+    audience: `Estudantes de ${item.course} do ${item.semesters} (participação fictícia).`,
+    publicDescription: item.description,
+    requesterName: "Equipe !Null · Demonstração",
+    speaker: "Equipe de demonstração",
+    organizer: "Projeto acadêmico !Null · Demonstração",
+    justification:
+      "Popular a agenda com exemplos fictícios autorizados para avaliar a consulta pública, os filtros e os relatórios.",
+    objective:
+      "Demonstrar o agendamento com diferentes datas, horários e públicos acadêmicos fictícios.",
+    ceremony: false,
+    registration: false,
+    certificates: false,
+    resourceIds: [],
+    notes: noteFor(item),
+  };
+}
 
 /**
  * Uses the same authenticated HTTP workflow as the administration interface.
@@ -90,7 +122,7 @@ export async function seedDemoEvents({
   if (!publish) {
     for (const item of plan)
       log(
-        `${item.date} ${item.startTime}–${item.endTime} | ${nameFor(item)} | ${item.course}: ${item.semesters}`,
+        `${item.date} ${item.startTime}–${item.endTime} | ${nameFor(item)} | ${item.room} | ${item.course}: ${item.semesters}`,
       );
     log(
       "Simulação: nenhum acesso autenticado nem alteração. Use --publish para cadastrar e aprovar.",
@@ -189,8 +221,7 @@ export async function seedDemoEvents({
     const names = {
       themes: ["Demonstração acadêmica"],
       costCenters: ["Demonstração acadêmica"],
-      resources: [`Projetor${SUFFIX}`],
-      rooms: [...new Set(plan.map((item) => `${item.room}${SUFFIX}`))],
+      rooms: [...new Set(plan.map((item) => item.room))],
       courses: [...new Set(plan.map((item) => `${item.course}${SUFFIX}`))],
     };
     for (const [entity, requiredNames] of Object.entries(names))
@@ -200,7 +231,8 @@ export async function seedDemoEvents({
         );
         if (
           candidates.length > 1 ||
-          (candidates.length &&
+          (entity !== "rooms" &&
+            candidates.length &&
             !candidates[0].description?.includes(DEMO_MARKER))
         )
           throw new Error(
@@ -219,14 +251,12 @@ export async function seedDemoEvents({
     }
     const theme = await catalog("themes", names.themes[0]);
     const cost = await catalog("costCenters", names.costCenters[0]);
-    const resource = await catalog("resources", names.resources[0]);
     const rooms = new Map();
     for (const name of names.rooms) {
-      const room = await catalog("rooms", name, { resourceIds: [resource.id] });
-      if (!room.resourceIds?.includes(resource.id))
-        throw new Error(
-          `O ambiente “${name}” perdeu seu recurso de demonstração; revisão manual necessária.`,
-        );
+      const room = await catalog("rooms", name, {
+        description: VENUE_DESCRIPTION,
+        resourceIds: [],
+      });
       rooms.set(name, room);
     }
     const courses = new Map();
@@ -240,31 +270,11 @@ export async function seedDemoEvents({
     }
     for (const item of plan) {
       const course = courses.get(`${item.course}${SUFFIX}`);
-      const data = {
-        name: nameFor(item),
+      const data = demoEventData(item, {
         themeId: theme.id,
-        date: item.date,
-        startTime: item.startTime,
-        endTime: item.endTime,
-        roomId: rooms.get(`${item.room}${SUFFIX}`).id,
+        roomId: rooms.get(item.room).id,
         courseId: course.id,
-        audienceCourseId: course.id,
-        audienceSemester: item.semesters,
-        audience: `Estudantes de ${item.course} do ${item.semesters} (participação fictícia).`,
-        publicDescription: item.description,
-        requesterName: "Equipe !Null · Demonstração",
-        speaker: "Equipe de demonstração",
-        organizer: "Projeto acadêmico !Null · Demonstração",
-        justification:
-          "Popular a agenda com exemplos fictícios autorizados para avaliar a consulta pública, os filtros e os relatórios.",
-        objective:
-          "Demonstrar o agendamento com diferentes datas, horários e públicos acadêmicos fictícios.",
-        ceremony: false,
-        registration: false,
-        certificates: false,
-        resourceIds: [resource.id],
-        notes: noteFor(item),
-      };
+      });
       let event = matches.get(item.key);
       if (event) {
         for (const [field, value] of Object.entries(data)) {

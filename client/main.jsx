@@ -257,6 +257,15 @@ function App() {
   }, [theme]);
   const refreshMetadata = async () => {
     const data = await api("/metadata");
+    const commonVenues = new Map([
+      ["Auditório", 0],
+      ["Miniauditório", 1],
+    ]);
+    data.rooms.sort(
+      (a, b) =>
+        (commonVenues.get(a.name) ?? 2) - (commonVenues.get(b.name) ?? 2) ||
+        a.name.localeCompare(b.name, "pt-BR"),
+    );
     setMetadata(data);
     return data;
   };
@@ -745,12 +754,12 @@ function Agenda({ events, metadata, onRequest, loading, onNotifications }) {
               </select>
             </label>
             <label className="field">
-              Local
+              Local do evento
               <select
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
               >
-                <option value="">Todos os ambientes</option>
+                <option value="">Todos os locais</option>
                 {metadata.rooms.map((t) => (
                   <option value={t.id} key={t.id}>
                     {t.name}
@@ -1789,7 +1798,7 @@ function RequestModal({
             {field("date", "Data *", "date", null, { min: today() })}
             {field("startTime", "Horário de início *", "time")}
             {field("endTime", "Horário de término *", "time")}
-            {field("roomId", "Ambiente *", "text", metadata.rooms)}
+            {field("roomId", "Local do evento *", "text", metadata.rooms)}
             {field("speaker", "Palestrante *")}
             {field(
               "courseId",
